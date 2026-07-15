@@ -19,8 +19,15 @@ namespace NacelleSolidWorks
 
         public string Build(string outputDirectory, string nacellePartPath)
         {
+            // El ala es solamente una referencia para la revision de posicion. La nacela
+            // ya fue creada desde cero antes de entrar a esta funcion. Si el ensamblaje
+            // base no existe, no se invalida la generacion de la pieza.
             if (!File.Exists(cfg.SourceAssembly))
-                throw new FileNotFoundException("No se encontro el ensamblaje base. Ejecute CONFIGURAR_RUTA_ALA.bat", cfg.SourceAssembly);
+            {
+                log("Advertencia: no se encontro el ensamblaje base: " + cfg.SourceAssembly);
+                log("Se omite el ensamblaje de revision, pero la nacela SLDPRT queda generada.");
+                return String.Empty;
+            }
 
             string reviewAssembly = Path.Combine(outputDirectory, "ALA_REVIEW_NACELA_DER_" + cfg.Revision + ".SLDASM");
             session.CloseIfOpen(reviewAssembly);
