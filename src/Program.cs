@@ -41,7 +41,9 @@ namespace NacelleSolidWorks
                     finalResult = stage2;
                 }
 
-                if (command == "stage3" || command == "review")
+                // La revision normal se detiene en Stage 2. Primero se aprueban OML,
+                // integracion, toma y escapes; los capos se ejecutan de forma explicita.
+                if (command == "stage3")
                 {
                     stage3 = new NacelleStage3Builder(session, cfg, Log).Build(stage2);
                     finalResult = stage3;
@@ -61,10 +63,10 @@ namespace NacelleSolidWorks
                 Console.WriteLine("\nLISTO. La nacela A2 fue generada desde cero.");
                 if (command == "stage1")
                     Console.WriteLine("Se genero OML, gearbox y saddle fairing.");
-                else if (command == "stage2")
-                    Console.WriteLine("Se agregaron toma chin, escapes enrasados y NACA.");
+                else if (command == "stage3")
+                    Console.WriteLine("Se generaron tambien capos y paneles funcionales.");
                 else
-                    Console.WriteLine("Se agregaron tambien capos y paneles funcionales de Stage 3.");
+                    Console.WriteLine("Se generaron OML, toma chin, escapes enrasados y NACA.");
                 if (!String.IsNullOrWhiteSpace(assembly))
                     Console.WriteLine("Tambien se creo el ensamblaje de revision con posicion global explicita.");
                 return 0;
