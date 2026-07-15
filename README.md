@@ -1,109 +1,200 @@
 # NACELA — generador nativo para SOLIDWORKS 2021
 
-Este repositorio contiene un programa C#/.NET Framework que controla SOLIDWORKS mediante la API COM y crea una nacela turbohélice mediante operaciones nativas editables.
+Generador C#/.NET Framework que controla SOLIDWORKS mediante la API COM y construye una nacela turbohélice con operaciones nativas editables.
 
-No usa FreeCAD, CadQuery, STEP, IGES, STL ni cuerpos importados.
+No usa FreeCAD, CadQuery, STEP, IGES, STL, mallas ni cuerpos importados.
 
-## Revisión A1
+## Objetivo A2
 
-La A1 corrige el defecto principal de A0: la pieza ya no contiene coordenadas globales del ala. La nacela se modela en un sistema local con origen en el plano de hélice y después se inserta en el ensamblaje mediante una transformación explícita:
+La revisión `A2` reconstruye la nacela siguiendo una referencia visual de transporte turbohélice con:
 
-- X global de montaje: borde de ataque local menos 1,600 m;
-- Y global: +4,300 m;
-- Z global del eje: -0,550 m.
+- morro corto y redondeado;
+- volumen principal robusto pero no esférico;
+- hombros laterales definidos;
+- panza profunda para accesorios;
+- boattail posterior corto;
+- fairing superior ancho tipo saddle;
+- toma principal inferior integrada;
+- dos escapes laterales altos, enrasados y dentro de bolsillos térmicos;
+- dos entradas NACA pequeñas para refrigeración de accesorios;
+- capós laterales y paneles funcionales disponibles como Stage 3 separado.
 
-Con esto deja de aparecer en el centro del ala.
+## Requisitos conservados de la hoja 03_CONFIGURACION
 
-### Stage 1 — OML y montaje
+```text
+L_nac = 2.556 m
+W_nac = 0.920 m
+H_nac = 1.340 m
+y_motor = +4.300 m
+c_local = 2.958955 m
+x_nac_fwd relativo al BA = -1.000 m
+x_nac_aft relativo al BA = +1.556 m
+A_c_total = 0.1846585 m2
+envolvente motor = 2.130 x 0.720 x 0.840 m
+```
 
-- 10 secciones cerradas asimétricas;
-- 4 curvas guía continuas;
-- loft sólido nativo;
-- morro, boss de caja reductora y abertura central;
+El extremo trasero queda aproximadamente en `x/c = 0.526`, dentro del límite de la configuración.
+
+## Entrada CAD
+
+El único modelo previo necesario para revisar la integración es el conjunto del ala:
+
+```text
+ALA_COMPLETA_MECANISMOS.SLDASM
+ALA_FIJA_DERECHA.SLDPRT
+ALA_FIJA_IZQUIERDA.SLDPRT
+ALERON_DERECHO.SLDPRT
+ALERON_IZQUIERDO.SLDPRT
+FLAP_DERECHO.SLDPRT
+SPOILER_DER_EXTERIOR.SLDPRT
+SPOILER_DER_INTERIOR.SLDPRT
+SPOILER_IZQ_EXTERIOR.SLDPRT
+SPOILER_IZQ_INTERIOR.SLDPRT
+```
+
+No hace falta ninguna nacela previa. Cada ejecución crea documentos nuevos desde una plantilla de pieza de SOLIDWORKS.
+
+## Sistema de coordenadas
+
+La pieza se modela localmente:
+
+- origen: plano de hélice;
+- `X`: hacia atrás;
+- `Y`: lateral;
+- `Z`: vertical;
+- eje del motor local: `Y=0`, `Z=0`.
+
+El ensamblaje aplica después la transformación:
+
+```text
+X = -1.739330 m
+Y = +4.300000 m
+Z = -0.880000 m
+```
+
+Así se evita duplicar las coordenadas globales dentro de los croquis de la pieza.
+
+## Etapas
+
+### Stage 1 — OML e integración
+
+Genera:
+
+- 12 perfiles cerrados asimétricos;
+- cuatro curvas guía;
+- loft sólido principal;
 - envolvente interna oculta del PW127XT-M;
-- fairing superior corto situado alrededor del borde de ataque real;
-- pieza definida en coordenadas locales;
-- ensamblaje de revisión con transformación global explícita.
+- boss y transición del gearbox;
+- hueco central del eje;
+- fairing superior ancho tipo saddle;
+- vistas lateral, frontal, planta e isométrica.
 
-### Stage 2 — sistemas externos
+Archivo:
 
-- toma principal inferior tipo chin intake;
-- área elíptica nominal de 0,1848 m²;
-- conducto interno por loft hacia una interfaz de 0,420 × 0,260 m;
-- dos escapes laterales compactos tipo D;
-- dos entradas NACA pequeñas para ventilación o accesorios;
-- las NACA no alimentan el motor principal;
-- el diámetro equivalente preliminar del escape se conserva solo como dato pendiente de revisión.
+```text
+NACELA_DERECHA_A2_STAGE1_OML.SLDPRT
+```
 
-Los capós practicables, bisagras, cierres, paneles de servicio y heat shields corresponden a Stage 3. No se agregan hasta aprobar la forma y la posición de A1.
+### Stage 2 — admisión y escape
 
-## Archivos de entrada
+Genera:
 
-El único modelo previo necesario para revisar la integración es el conjunto del ala. No hace falta ninguna nacela previa. El programa crea una pieza nueva y genera desde cero sus croquis, secciones, curvas guía, lofts, cortes y referencias.
+- bolsillo exterior de labio;
+- chin intake de 0.650 x 0.362 m;
+- ducto por loft hasta interfaz 0.420 x 0.260 m;
+- dos escapes D-shaped de 0.340 x 0.180 m;
+- bolsillos térmicos alrededor de los escapes;
+- dos tomas NACA auxiliares.
 
-Si el ala no está disponible, las piezas de nacela se generan igualmente. Solamente se omite el ensamblaje de revisión.
+Archivo:
 
-## Parámetros adoptados
+```text
+NACELA_DERECHA_A2_STAGE2_SISTEMAS.SLDPRT
+```
 
-Los parámetros editables están en `config/defaults.ini`:
+La revisión normal termina aquí para revisar primero la forma y la integración.
 
-- motor: PW127XT-M;
-- longitud motor: 2,130 m;
-- ancho motor: 0,720 m;
-- altura motor: 0,840 m;
-- masa seca de referencia: 494,7 kg;
-- longitud nacela: 2,750 m;
-- ancho máximo nacela: 0,900 m;
-- altura máxima nacela: 1,100 m;
-- posición transversal: 4,300 m;
-- plano de hélice: 1,600 m delante del borde de ataque local;
-- eje: 0,550 m bajo el plano de cuerda;
-- cuerda local: 2,958955 m;
-- diámetro preliminar de hélice: 3,600 m;
-- régimen: 1200 rpm.
+### Stage 3 — capós y paneles
 
-## Ejecución normal
+Se ejecuta de forma explícita después de aprobar Stage 2. Agrega:
 
-1. `01_ACTUALIZAR.bat`
-2. `00_PREPARAR_ALA.bat`, únicamente cuando el ala todavía no está instalada.
-3. `02_EJECUTAR_REVISION.bat`
-4. `03_ABRIR_ULTIMO_RESULTADO.bat`
+- gran capó exterior;
+- gran capó interior;
+- línea funcional de firewall;
+- panel exterior de servicio de aceite.
 
-`02_EJECUTAR_REVISION.bat` construye Stage 1, Stage 2 y el ensamblaje de revisión.
+Archivo:
 
-Para revisar solamente la piel exterior antes de los conductos:
+```text
+NACELA_DERECHA_A2_STAGE3_FINAL.SLDPRT
+```
+
+## Uso
+
+Actualizar:
+
+```text
+01_ACTUALIZAR.bat
+```
+
+Preparar el ala la primera vez:
+
+```text
+00_PREPARAR_ALA.bat
+```
+
+Generar A2 hasta Stage 2 y crear el ensamblaje de revisión:
+
+```text
+02_EJECUTAR_REVISION.bat
+```
+
+Abrir el último resultado:
+
+```text
+03_ABRIR_ULTIMO_RESULTADO.bat
+```
+
+Generar solo OML:
 
 ```text
 04_EJECUTAR_SOLO_OML.bat
 ```
 
+Generar también Stage 3:
+
+```text
+05_EJECUTAR_STAGE3_CAPOS.bat
+```
+
 ## Resultados
 
-La revisión se guarda en `generated/A1/`:
+```text
+generated\A2\
+```
 
-- `NACELA_DERECHA_A1_STAGE1_OML.SLDPRT`
-- `NACELA_DERECHA_A1_STAGE2_SISTEMAS.SLDPRT`
-- `ALA_REVIEW_NACELA_DER_A1.SLDASM`
-- vistas lateral, frontal, planta e isométrica de Stage 1 y Stage 2;
-- `VALIDACION_STAGE1_A1.txt`
-- `VALIDACION_STAGE2_A1.txt`
+La revisión normal crea:
 
-## Referencias de criterio
+```text
+NACELA_DERECHA_A2_STAGE1_OML.SLDPRT
+NACELA_DERECHA_A2_STAGE2_SISTEMAS.SLDPRT
+ALA_REVIEW_NACELA_DER_A2.SLDASM
+VALIDACION_STAGE1_A2.txt
+VALIDACION_STAGE2_A2.txt
+```
 
-La trazabilidad y las decisiones de diseño están en `docs/CRITERIO_DISENO_A1.md`.
+También crea BMP lateral, frontal, planta e isométrica de cada etapa.
 
-## Compilación
+## Criterio de modelado
 
-`BUILD.bat` busca `csc.exe` de .NET Framework 4.x y la DLL de interoperabilidad de SOLIDWORKS. Después de compilar, copia la DLL junto al ejecutable en `bin/`.
+- Una spline cerrada por sección.
+- Cuatro guías longitudinales.
+- Loft sólido nativo.
+- Fairing fusionado con el cuerpo principal.
+- Tomas y escapes obtenidos mediante herramientas loft y sustracciones booleanas nativas.
+- Sin pods añadidos ni tubos circulares sobredimensionados.
+- Detalles funcionales antes que paneles decorativos.
 
-## Qué enviar para la siguiente iteración
+## Limitación
 
-- vista lateral estricta;
-- vista frontal estricta;
-- vista superior;
-- isométrica desde delante y abajo;
-- `ultimo_ejecucion.log` si aparece un error.
-
-## Alcance
-
-Es un modelo preliminar de integración y no un installation drawing certificado. La geometría OEM interna, cargas, fuego, vibración, bird strike, distorsión de entrada, pérdidas de conducto y temperatura de escape requieren documentación del fabricante y análisis específicos.
+El modelo es una definición preliminar para integración y TFG. La geometría interna exacta, soportes, accesorios, zonas térmicas y condiciones de admisión/escape deben validarse posteriormente con documentación OEM y CFD.
