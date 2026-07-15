@@ -25,31 +25,46 @@ namespace NacelleSolidWorks
                 Log("Revision: " + cfg.Revision);
                 Log("Comando: " + command);
 
-                if (command != "stage1" && command != "stage2" && command != "review")
-                    throw new InvalidOperationException("Comando valido: stage1, stage2 o review.");
+                if (command != "stage1" && command != "stage2" && command != "stage3" && command != "review")
+                    throw new InvalidOperationException("Comando valido: stage1, stage2, stage3 o review.");
 
                 SwSession session = SwSession.Connect(Log);
 
                 BuildResult stage1 = new NacelleStage1Builder(session, cfg, root, Log).Build();
                 BuildResult finalResult = stage1;
+                BuildResult stage2 = null;
+                BuildResult stage3 = null;
 
-                if (command == "stage2" || command == "review")
-                    finalResult = new NacelleStage2Builder(session, cfg, Log).Build(stage1);
+                if (command == "stage2" || command == "stage3" || command == "review")
+                {
+                    stage2 = new NacelleStage2Builder(session, cfg, Log).Build(stage1);
+                    finalResult = stage2;
+                }
+
+                if (command == "stage3" || command == "review")
+                {
+                    stage3 = new NacelleStage3Builder(session, cfg, Log).Build(stage2);
+                    finalResult = stage3;
+                }
 
                 string assembly = new AssemblyReviewBuilder(session, cfg, Log).Build(finalResult.OutputDirectory, finalResult.PartPath);
 
                 Log("RESULTADO_STAGE1=" + stage1.PartPath);
-                if (finalResult.PartPath != stage1.PartPath) Log("RESULTADO_STAGE2=" + finalResult.PartPath);
+                if (stage2 != null) Log("RESULTADO_STAGE2=" + stage2.PartPath);
+                if (stage3 != null) Log("RESULTADO_STAGE3=" + stage3.PartPath);
                 if (!String.IsNullOrWhiteSpace(assembly)) Log("RESULTADO_ENSAMBLE=" + assembly);
                 else Log("RESULTADO_ENSAMBLE=OMITIDO_POR_FALTA_DE_ALA_BASE");
                 Log("RESULTADO_REPORTE=" + finalResult.LogPath);
                 Log("Ejecucion finalizada correctamente.");
 
                 File.WriteAllText(executionLog, JoinMessages(), Encoding.UTF8);
-                Console.WriteLine("\nLISTO. La nacela fue generada desde cero.");
-                Console.WriteLine(command == "stage1"
-                    ? "Se genero el OML limpio de Stage 1."
-                    : "Se genero Stage 1 y luego Stage 2 con toma principal, escapes y NACA.");
+                Console.WriteLine("\nLISTO. La nacela A2 fue generada desde cero.");
+                if (command == "stage1")
+                    Console.WriteLine("Se genero OML, gearbox y saddle fairing.");
+                else if (command == "stage2")
+                    Console.WriteLine("Se agregaron toma chin, escapes enrasados y NACA.");
+                else
+                    Console.WriteLine("Se agregaron tambien capos y paneles funcionales de Stage 3.");
                 if (!String.IsNullOrWhiteSpace(assembly))
                     Console.WriteLine("Tambien se creo el ensamblaje de revision con posicion global explicita.");
                 return 0;
