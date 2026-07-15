@@ -30,6 +30,7 @@ for %%F in (
   "%~dp0src\Program.cs"
   "%~dp0src\SwSession.cs"
   "%~dp0src\SwGeometry.cs"
+  "%~dp0src\SwGeometryCompatTypes.cs"
   "%~dp0src\B1Config.cs"
   "%~dp0src\B1Geometry.cs"
   "%~dp0src\B1Stage1Builder.cs"
@@ -59,6 +60,7 @@ del /q "%~dp0bin\SolidWorks.Interop.sldworks.dll" >nul 2>&1
   "%~dp0src\Program.cs" ^
   "%~dp0src\SwSession.cs" ^
   "%~dp0src\SwGeometry.cs" ^
+  "%~dp0src\SwGeometryCompatTypes.cs" ^
   "%~dp0src\B1Config.cs" ^
   "%~dp0src\B1Geometry.cs" ^
   "%~dp0src\B1Stage1Builder.cs" ^
