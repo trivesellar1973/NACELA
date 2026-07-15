@@ -19,9 +19,6 @@ namespace NacelleSolidWorks
 
         public string Build(string outputDirectory, string nacellePartPath)
         {
-            // El ala es solamente una referencia para la revision de posicion. La nacela
-            // ya fue creada desde cero antes de entrar a esta funcion. Si el ensamblaje
-            // base no existe, no se invalida la generacion de la pieza.
             if (!File.Exists(cfg.SourceAssembly))
             {
                 log("Advertencia: no se encontro el ensamblaje base: " + cfg.SourceAssembly);
@@ -46,6 +43,19 @@ namespace NacelleSolidWorks
             Component2 component = assembly.AddComponent5(nacellePartPath, 0, "", false, "", 0, 0, 0);
             if (component == null) throw new InvalidOperationException("No se pudo insertar la nacela en el ensamblaje");
 
+            IMathUtility math = (IMathUtility)session.App.GetMathUtility();
+            double[] transformData = new double[]
+            {
+                1.0, 0.0, 0.0,
+                0.0, 1.0, 0.0,
+                0.0, 0.0, 1.0,
+                cfg.AssemblyX, cfg.YMotor, cfg.ZAxis,
+                1.0, 0.0, 0.0, 0.0
+            };
+            MathTransform transform = (MathTransform)math.CreateTransform(transformData);
+            if (transform == null) throw new InvalidOperationException("No se pudo crear la transformacion de montaje");
+            component.Transform2 = transform;
+
             doc.ClearSelection2(true);
             component.Select4(false, null, false);
             assembly.FixComponent();
@@ -60,7 +70,11 @@ namespace NacelleSolidWorks
             doc.ViewZoomtofit2();
             doc.GraphicsRedraw2();
             doc.SaveBMP(Path.Combine(outputDirectory, "ALA_REVIEW_NACELA_DER_" + cfg.Revision + "_ISO.bmp"), 1800, 1100);
+
             log("Ensamblaje de revision creado: " + reviewAssembly);
+            log("Transformacion aplicada: X=" + cfg.AssemblyX.ToString("0.000000") +
+                " Y=" + cfg.YMotor.ToString("0.000000") +
+                " Z=" + cfg.ZAxis.ToString("0.000000"));
             return reviewAssembly;
         }
     }
