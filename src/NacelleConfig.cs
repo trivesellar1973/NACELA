@@ -61,6 +61,8 @@ namespace NacelleSolidWorks
         public double IntakeXInterface { get { return GetDouble("intake_x_interface_m"); } }
         public double IntakeZOuter { get { return GetDouble("intake_z_outer_m"); } }
         public double IntakeZInterface { get { return GetDouble("intake_z_interface_m"); } }
+        public double IntakeLipPocketWidth { get { return GetDouble("intake_lip_pocket_width_m"); } }
+        public double IntakeLipPocketHeight { get { return GetDouble("intake_lip_pocket_height_m"); } }
 
         public double ExhaustX { get { return GetDouble("exhaust_x_m"); } }
         public double ExhaustZ { get { return GetDouble("exhaust_z_m"); } }
@@ -68,6 +70,9 @@ namespace NacelleSolidWorks
         public double ExhaustHeight { get { return GetDouble("exhaust_height_m"); } }
         public double ExhaustOuterY { get { return GetDouble("exhaust_outer_y_m"); } }
         public double ExhaustInnerY { get { return GetDouble("exhaust_inner_y_m"); } }
+        public double ExhaustRecessInnerY { get { return GetDouble("exhaust_recess_inner_y_m"); } }
+        public double ExhaustBezelLength { get { return GetDouble("exhaust_bezel_length_m"); } }
+        public double ExhaustBezelHeight { get { return GetDouble("exhaust_bezel_height_m"); } }
         public double ExhaustEquivalentEach { get { return GetDouble("exhaust_equiv_each_m"); } }
 
         public double NacaX { get { return GetDouble("naca_x_m"); } }
@@ -76,6 +81,19 @@ namespace NacelleSolidWorks
         public double NacaHeight { get { return GetDouble("naca_height_m"); } }
         public double NacaOuterY { get { return GetDouble("naca_outer_y_m"); } }
         public double NacaInnerY { get { return GetDouble("naca_inner_y_m"); } }
+
+        public double CowlX { get { return GetDouble("cowl_x_m"); } }
+        public double CowlZ { get { return GetDouble("cowl_z_m"); } }
+        public double CowlLength { get { return GetDouble("cowl_length_m"); } }
+        public double CowlHeight { get { return GetDouble("cowl_height_m"); } }
+        public double CowlOuterY { get { return GetDouble("cowl_outer_y_m"); } }
+        public double CowlInnerY { get { return GetDouble("cowl_inner_y_m"); } }
+        public double OilPanelX { get { return GetDouble("oil_panel_x_m"); } }
+        public double OilPanelZ { get { return GetDouble("oil_panel_z_m"); } }
+        public double OilPanelLength { get { return GetDouble("oil_panel_length_m"); } }
+        public double OilPanelHeight { get { return GetDouble("oil_panel_height_m"); } }
+        public double FirewallX { get { return GetDouble("firewall_x_m"); } }
+        public double FirewallGrooveWidth { get { return GetDouble("firewall_groove_width_m"); } }
 
         public double SkinR { get { return GetDouble("skin_r"); } }
         public double SkinG { get { return GetDouble("skin_g"); } }
@@ -140,8 +158,8 @@ namespace NacelleSolidWorks
 
         private void Validate()
         {
-            if (Sections.Count < 8) throw new InvalidDataException("Se requieren al menos 8 secciones OML");
-            if (FairingSections.Count < 3) throw new InvalidDataException("Se requieren al menos 3 secciones de fairing");
+            if (Sections.Count < 10) throw new InvalidDataException("Se requieren al menos 10 secciones OML");
+            if (FairingSections.Count < 5) throw new InvalidDataException("Se requieren al menos 5 secciones de fairing");
             if (Math.Abs((XAft - XFront) - Length) > 0.002) throw new InvalidDataException("L_NAC no coincide con extremos locales X");
             if (Sections[0].X < XFront - 0.001 || Sections[0].X > XFront + 0.150) throw new InvalidDataException("La primera seccion debe quedar cerca del plano de helice");
             if (Math.Abs(Sections[Sections.Count - 1].X - XAft) > 0.002) throw new InvalidDataException("Ultima seccion no coincide con X trasero local");
@@ -160,8 +178,15 @@ namespace NacelleSolidWorks
             double ellipseArea = Math.PI * IntakeWidth * IntakeHeight / 4.0;
             if (ellipseArea + 0.001 < IntakeRequiredArea)
                 throw new InvalidDataException("La toma principal no alcanza el area de captura requerida");
-            if (Math.Abs(GlobalAft - (LeadingEdgeX - PropPlaneAheadLeadingEdge + Length)) > 1e-8)
-                throw new InvalidDataException("Inconsistencia en posicion longitudinal global");
+
+            double aftRatio = (GlobalAft - LeadingEdgeX) / LocalChord;
+            if (aftRatio > 0.535)
+                throw new InvalidDataException("La nacela termina demasiado atras: x/c=" + aftRatio.ToString("0.000", CultureInfo.InvariantCulture));
+
+            if (EngineWidth > MaxWidth - 0.180)
+                throw new InvalidDataException("No queda margen lateral suficiente para la envolvente del motor");
+            if (ExhaustInnerY >= ExhaustOuterY)
+                throw new InvalidDataException("Geometria de escape invalida");
         }
 
         private string Get(string key)
