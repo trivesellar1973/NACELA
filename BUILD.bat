@@ -25,19 +25,7 @@ if not exist "%SWDLL%" (
 
 rem IMPORTANTE:
 rem No compilar src\*.cs. Las copias descargadas como ZIP pueden conservar
-rem archivos viejos que ya fueron eliminados de GitHub. Compilamos solamente
-rem la arquitectura B1 activa y la infraestructura comun necesaria.
-set "SOURCES="
-set "SOURCES=%SOURCES% "%~dp0src\Program.cs""
-set "SOURCES=%SOURCES% "%~dp0src\SwSession.cs""
-set "SOURCES=%SOURCES% "%~dp0src\SwGeometry.cs""
-set "SOURCES=%SOURCES% "%~dp0src\B1Config.cs""
-set "SOURCES=%SOURCES% "%~dp0src\B1Geometry.cs""
-set "SOURCES=%SOURCES% "%~dp0src\B1Stage1Builder.cs""
-set "SOURCES=%SOURCES% "%~dp0src\B1Stage2Builder.cs""
-set "SOURCES=%SOURCES% "%~dp0src\B1Stage3Builder.cs""
-set "SOURCES=%SOURCES% "%~dp0src\B1AssemblyReviewBuilder.cs""
-
+rem archivos viejos eliminados en GitHub. Solo se compila la arquitectura B1.
 for %%F in (
   "%~dp0src\Program.cs"
   "%~dp0src\SwSession.cs"
@@ -59,13 +47,24 @@ for %%F in (
 echo Compilando revision B1 con:
 echo   CSC: %CSC%
 echo   SW : %SWDLL%
-echo   Fuentes: solo Program + B1 + infraestructura comun
+echo   Fuentes: Program + B1 + infraestructura comun
 
 del /q "%~dp0bin\NacelleBuilder.exe" >nul 2>&1
 del /q "%~dp0bin\NacelleBuilder.pdb" >nul 2>&1
 del /q "%~dp0bin\SolidWorks.Interop.sldworks.dll" >nul 2>&1
 
-"%CSC%" /nologo /target:exe /platform:x64 /optimize+ /warn:4 /out:"%~dp0bin\NacelleBuilder.exe" /reference:"%SWDLL%" %SOURCES%
+"%CSC%" /nologo /target:exe /platform:x64 /optimize+ /warn:4 ^
+  /out:"%~dp0bin\NacelleBuilder.exe" ^
+  /reference:"%SWDLL%" ^
+  "%~dp0src\Program.cs" ^
+  "%~dp0src\SwSession.cs" ^
+  "%~dp0src\SwGeometry.cs" ^
+  "%~dp0src\B1Config.cs" ^
+  "%~dp0src\B1Geometry.cs" ^
+  "%~dp0src\B1Stage1Builder.cs" ^
+  "%~dp0src\B1Stage2Builder.cs" ^
+  "%~dp0src\B1Stage3Builder.cs" ^
+  "%~dp0src\B1AssemblyReviewBuilder.cs"
 if errorlevel 1 (
   echo ERROR DE COMPILACION B1.
   exit /b 5
