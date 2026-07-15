@@ -12,26 +12,16 @@ if not defined REV (
 )
 
 set "ASM=%~dp0generated\%REV%\ALA_REVIEW_NACELA_DER_%REV%.SLDASM"
-set "PART3=%~dp0generated\%REV%\NACELA_DERECHA_%REV%_STAGE3_FINAL.SLDPRT"
-set "PART2=%~dp0generated\%REV%\NACELA_DERECHA_%REV%_STAGE2_SISTEMAS.SLDPRT"
-set "PART1=%~dp0generated\%REV%\NACELA_DERECHA_%REV%_STAGE1_OML.SLDPRT"
+set "PART=%~dp0generated\%REV%\NACELA_DERECHA_%REV%_STAGE1_FRENTE_SOLIDO.SLDPRT"
 
 if exist "%ASM%" (
   start "" "%ASM%"
   exit /b 0
 )
-if exist "%PART3%" (
-  start "" "%PART3%"
-  exit /b 0
-)
-if exist "%PART2%" (
-  start "" "%PART2%"
-  exit /b 0
-)
-if exist "%PART1%" (
-  echo No se genero ensamblaje de revision porque no estaba instalada el ala.
-  echo Abriendo la nacela creada desde cero.
-  start "" "%PART1%"
+if exist "%PART%" (
+  echo No se genero ensamblaje porque no estaba disponible el ala base.
+  echo Abriendo la nacela B2 frontal solida.
+  start "" "%PART%"
   exit /b 0
 )
 
