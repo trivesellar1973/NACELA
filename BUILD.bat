@@ -23,35 +23,66 @@ if not exist "%SWDLL%" (
   exit /b 3
 )
 
-echo Compilando con:
+rem IMPORTANTE:
+rem No compilar src\*.cs. Las copias descargadas como ZIP pueden conservar
+rem archivos viejos que ya fueron eliminados de GitHub. Compilamos solamente
+rem la arquitectura B1 activa y la infraestructura comun necesaria.
+set "SOURCES="
+set "SOURCES=%SOURCES% "%~dp0src\Program.cs""
+set "SOURCES=%SOURCES% "%~dp0src\SwSession.cs""
+set "SOURCES=%SOURCES% "%~dp0src\SwGeometry.cs""
+set "SOURCES=%SOURCES% "%~dp0src\B1Config.cs""
+set "SOURCES=%SOURCES% "%~dp0src\B1Geometry.cs""
+set "SOURCES=%SOURCES% "%~dp0src\B1Stage1Builder.cs""
+set "SOURCES=%SOURCES% "%~dp0src\B1Stage2Builder.cs""
+set "SOURCES=%SOURCES% "%~dp0src\B1Stage3Builder.cs""
+set "SOURCES=%SOURCES% "%~dp0src\B1AssemblyReviewBuilder.cs""
+
+for %%F in (
+  "%~dp0src\Program.cs"
+  "%~dp0src\SwSession.cs"
+  "%~dp0src\SwGeometry.cs"
+  "%~dp0src\B1Config.cs"
+  "%~dp0src\B1Geometry.cs"
+  "%~dp0src\B1Stage1Builder.cs"
+  "%~dp0src\B1Stage2Builder.cs"
+  "%~dp0src\B1Stage3Builder.cs"
+  "%~dp0src\B1AssemblyReviewBuilder.cs"
+) do (
+  if not exist "%%~F" (
+    echo ERROR: falta el archivo activo %%~nxF
+    echo Ejecute 01_ACTUALIZAR.bat y vuelva a intentar.
+    exit /b 4
+  )
+)
+
+echo Compilando revision B1 con:
 echo   CSC: %CSC%
 echo   SW : %SWDLL%
+echo   Fuentes: solo Program + B1 + infraestructura comun
 
 del /q "%~dp0bin\NacelleBuilder.exe" >nul 2>&1
 del /q "%~dp0bin\NacelleBuilder.pdb" >nul 2>&1
 del /q "%~dp0bin\SolidWorks.Interop.sldworks.dll" >nul 2>&1
 
-"%CSC%" /nologo /target:exe /platform:x64 /optimize+ /warn:4 /out:"%~dp0bin\NacelleBuilder.exe" /reference:"%SWDLL%" "%~dp0src\*.cs"
+"%CSC%" /nologo /target:exe /platform:x64 /optimize+ /warn:4 /out:"%~dp0bin\NacelleBuilder.exe" /reference:"%SWDLL%" %SOURCES%
 if errorlevel 1 (
-  echo ERROR DE COMPILACION.
-  exit /b 4
+  echo ERROR DE COMPILACION B1.
+  exit /b 5
 )
 
-rem La referencia usada por csc.exe no se copia automaticamente porque no hay
-rem proyecto MSBuild. El CLR necesita esta DLL junto al ejecutable en tiempo
-rem de ejecucion; de lo contrario aparece FileNotFoundException Version=29.x.
 copy /y "%SWDLL%" "%~dp0bin\SolidWorks.Interop.sldworks.dll" >nul
 if errorlevel 1 (
   echo ERROR: se compilo el EXE pero no se pudo copiar la DLL de interoperabilidad.
-  exit /b 5
+  exit /b 6
 )
 
 if not exist "%~dp0bin\SolidWorks.Interop.sldworks.dll" (
   echo ERROR: falta bin\SolidWorks.Interop.sldworks.dll despues del build.
-  exit /b 6
+  exit /b 7
 )
 
-echo Build correcto:
+echo Build B1 correcto:
 echo   bin\NacelleBuilder.exe
 echo   bin\SolidWorks.Interop.sldworks.dll
 exit /b 0
