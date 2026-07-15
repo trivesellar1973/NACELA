@@ -12,13 +12,15 @@ if errorlevel 1 (
 
 echo.
 echo ============================================================
-echo   NACELA B2 - FRENTE SOLIDO CORREGIDO
+echo   NACELA B2 - SOLO CUERPO VERDE SIMPLE
 echo ============================================================
 echo Se genera solamente:
-echo   - un unico loft desde el circulo del spinner hasta la OML
-echo   - toma inferior rectangular ovalada, solida y cerrada
-echo   - union booleana Combine/Add con la panza
-echo No se generan saddle, shell, huecos, conductos, escapes ni paneles.
+echo   - cuerpo central mediante un loft de elipses sin guias
+echo   - circulo frontal unido al cuerpo con un loft independiente
+echo   - toma inferior rectangular redondeada con otro loft
+echo   - uniones solidas mediante Combine/Add
+echo No se generan pieza azul posterior, saddle, shell, huecos, conductos,
+echo escapes, tomas laterales ni paneles.
 echo.
 "%~dp0bin\NacelleBuilder.exe" review
 set "ERR=%ERRORLEVEL%"
