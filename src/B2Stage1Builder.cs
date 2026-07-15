@@ -44,15 +44,19 @@ namespace NacelleSolidWorks
                 "B2_01_ENVOLVENTE_MOTOR_REFERENCIA");
             SwGeometry.HideFeatureSketch(doc, envelope);
 
-            BuildUnifiedNoseAndOml(doc);
-            ValidateSingleSolid(doc, "B2 nariz y OML unificadas");
+            // La pieza verde se construye deliberadamente con tres operaciones simples:
+            // cuerpo central, boss circular superior y toma rectangular redondeada inferior.
+            // Cada operacion genera un solido independiente y la union se hace despues con
+            // Combine/Add. No se usan guias, filetes automaticos ni un unico loft gigante.
+            BuildCentralGreenBody(doc);
+            ValidateSingleSolid(doc, "B2 cuerpo central verde");
 
-            BuildClosedChinIntake(doc);
-            ValidateSingleSolid(doc, "B2 frente con toma inferior solida");
+            BuildCircularSpinnerBoss(doc);
+            ValidateSingleSolid(doc, "B2 cuerpo con boss circular");
 
-            // Esta revision se concentra solo en el frente. El saddle anterior no se
-            // reconstruye aqui para que una operacion secundaria no impida guardar la
-            // nariz y la toma ya corregidas.
+            BuildRoundedChinIntake(doc);
+            ValidateSingleSolid(doc, "B2 cuerpo con toma inferior");
+
             Feature axis = SwGeometry.CreateAxisSketch(doc, -0.120, cfg.XAft + 0.180, 0.0, 0.0, "B2_00_EJE_MOTOR_LOCAL");
             SwGeometry.HideFeatureSketch(doc, axis);
 
@@ -67,8 +71,8 @@ namespace NacelleSolidWorks
             SaveReviewViews(doc, output, "NACELA_DERECHA_B2_STAGE1_FRENTE_SOLIDO");
             string reportPath = Path.Combine(output, "VALIDACION_B2_STAGE1.txt");
             File.WriteAllText(reportPath, BuildReport(doc));
-            log("B2 Stage 1 corregido y guardado: " + partPath);
-            log("B2: boss circular integrado dentro del loft principal; toma inferior cerrada sumada por Combine/Add.");
+            log("B2 Stage 1 guardado: " + partPath);
+            log("B2: cuerpo verde simple; circulo y toma inferior unidos al cuerpo central mediante lofts separados y Combine/Add.");
 
             return new B2BuildResult
             {
@@ -79,89 +83,90 @@ namespace NacelleSolidWorks
             };
         }
 
-        private void BuildUnifiedNoseAndOml(IModelDoc2 doc)
+        private void BuildCentralGreenBody(IModelDoc2 doc)
         {
-            // El fallo anterior ocurria al crear la nariz como un segundo loft con
-            // Merge result. Ahora el circulo frontal, las elipses de transicion y la
-            // OML posterior pertenecen a una sola secuencia ordenada de perfiles.
-            List<B2OmlSection> sections = new List<B2OmlSection>();
-
-            foreach (B2OmlSection section in cfg.NoseSections)
-                if (section.X <= 0.340001) sections.Add(section);
-
-            foreach (B2OmlSection section in cfg.OmlSections)
-                if (section.X >= 0.439999) sections.Add(section);
-
-            sections.Sort(delegate(B2OmlSection a, B2OmlSection b) { return a.X.CompareTo(b.X); });
-            if (sections.Count < 12) throw new InvalidOperationException("Faltan perfiles para el loft unificado B2");
-
             List<Feature> profiles = new List<Feature>();
-            List<Feature> guides = new List<Feature>();
             try
             {
-                foreach (B2OmlSection section in sections)
-                    profiles.Add(B2Geometry.CreateOmlSection(doc, section, "B2_02_FRENTE_OML_" + section.Name));
-
-                guides.Add(B2Geometry.CreateGuide(doc, sections, 0, "B2_03_GUIA_CORONA_UNIFICADA"));
-                guides.Add(B2Geometry.CreateGuide(doc, sections, 1, "B2_03_GUIA_PANZA_UNIFICADA"));
-                guides.Add(B2Geometry.CreateGuide(doc, sections, 2, "B2_03_GUIA_EXTERIOR_UNIFICADA"));
-                guides.Add(B2Geometry.CreateGuide(doc, sections, 3, "B2_03_GUIA_INTERIOR_UNIFICADA"));
-
-                try
+                // Todas las secciones son elipses verdaderas con la misma costura en +Y.
+                // Esto evita los quiebres y torsiones que aparecian con superelipses,
+                // exponentes variables y cuatro curvas guia simultaneas.
+                foreach (B2OmlSection section in cfg.OmlSections)
                 {
-                    SwGeometry.LoftWithGuides(doc, profiles, guides, "B2_04_NARIZ_CIRCULAR_A_OML_UNIFICADA");
+                    profiles.Add(SwGeometry.CreateEllipseSectionX(
+                        doc, section.X, 0.0, section.ZCenter,
+                        section.Width, section.Height,
+                        "B2_02_CUERPO_CENTRAL_" + section.Name));
                 }
-                catch (Exception guidedError)
-                {
-                    log("B2: loft con guias no aceptado; se usa loft de perfiles. Detalle: " + guidedError.Message);
-                    doc.ClearSelection2(true);
-                    SwGeometry.SimpleMergedLoft(doc, profiles, "B2_04_NARIZ_CIRCULAR_A_OML_UNIFICADA_FALLBACK");
-                }
+
+                SwGeometry.SimpleMergedLoft(doc, profiles, "B2_03_CUERPO_CENTRAL_VERDE_SIMPLE");
             }
             finally
             {
                 HideAll(doc, profiles);
-                HideAll(doc, guides);
             }
-
-            bool frontFillet = SwGeometry.TryFilletNear(doc, 0.018, 0.010, 0.135, 0.000, "B2_04_FILETE_CARA_SPINNER_R018");
-            log(frontFillet
-                ? "B2: borde frontal del boss suavizado."
-                : "B2: frente continuo generado sin filete suplementario.");
         }
 
-        private void BuildClosedChinIntake(IModelDoc2 doc)
+        private void BuildCircularSpinnerBoss(IModelDoc2 doc)
+        {
+            List<Feature> profiles = new List<Feature>();
+            Feature noseLoft = null;
+            try
+            {
+                foreach (B2OmlSection section in cfg.NoseSections)
+                {
+                    profiles.Add(SwGeometry.CreateEllipseSectionX(
+                        doc, section.X, 0.0, section.ZCenter,
+                        section.Width, section.Height,
+                        "B2_04_NARIZ_CIRCULAR_" + section.Name));
+                }
+
+                // El primer perfil es el circulo frontal. Los siguientes solo hacen la
+                // transicion progresiva hasta penetrar en el cuerpo central.
+                noseLoft = SwGeometry.LoftTool(doc, profiles, "B2_05_LOFT_CIRCULO_A_CUERPO_CENTRAL");
+            }
+            finally
+            {
+                HideAll(doc, profiles);
+            }
+
+            if (noseLoft == null) throw new InvalidOperationException("No se creo el loft circular frontal");
+            if (SwGeometry.SolidBodyCount(doc) < 2)
+                throw new InvalidOperationException("La nariz circular no se genero como segundo cuerpo solido");
+
+            Body2 mainBody = SwGeometry.LargestSolidBody(doc);
+            Body2 noseBody = SwGeometry.BodyOf(noseLoft);
+            B2BodyOps.AddBodies(doc, mainBody, noseBody, "B2_06_UNION_CIRCULO_CON_CUERPO_CENTRAL");
+        }
+
+        private void BuildRoundedChinIntake(IModelDoc2 doc)
         {
             List<Feature> profiles = new List<Feature>();
             Feature intakeLoft = null;
             try
             {
                 foreach (B2RoundedSection section in cfg.IntakeSections)
-                    profiles.Add(B2Geometry.CreateRoundedRectangleSectionX(doc, section, "B2_05_TOMA_CERRADA_" + section.Name));
+                {
+                    profiles.Add(B2Geometry.CreateRoundedRectangleSectionX(
+                        doc, section, "B2_07_TOMA_RECTANGULAR_" + section.Name));
+                }
 
-                // Se genera como cuerpo independiente para que SolidWorks no tenga que
-                // resolver simultaneamente el loft y la fusion. Luego se suma por Combine.
-                intakeLoft = SwGeometry.LoftTool(doc, profiles, "B2_05_CUERPO_TOMA_RECTANGULAR_OVALADA");
+                // La boca permanece cerrada. El ultimo perfil penetra en la panza para
+                // que la union booleana sea estable y no deje una arista o cuello raro.
+                intakeLoft = SwGeometry.LoftTool(doc, profiles, "B2_08_LOFT_RECTANGULO_REDONDEADO_A_PANZA");
             }
             finally
             {
                 HideAll(doc, profiles);
             }
 
-            if (intakeLoft == null) throw new InvalidOperationException("No se creo el cuerpo cerrado de la toma inferior");
+            if (intakeLoft == null) throw new InvalidOperationException("No se creo el loft de la toma inferior");
             if (SwGeometry.SolidBodyCount(doc) < 2)
-                throw new InvalidOperationException("La toma no se genero como segundo cuerpo solido");
+                throw new InvalidOperationException("La toma inferior no se genero como segundo cuerpo solido");
 
             Body2 mainBody = SwGeometry.LargestSolidBody(doc);
             Body2 intakeBody = SwGeometry.BodyOf(intakeLoft);
-            B2BodyOps.AddBodies(doc, mainBody, intakeBody, "B2_06_UNION_OML_CON_TOMA_INFERIOR");
-
-            bool left = SwGeometry.TryFilletNear(doc, 0.025, 0.220, 0.205, -0.430, "B2_06_FILETE_LABIO_IZQUIERDO_R025");
-            bool right = SwGeometry.TryFilletNear(doc, 0.025, 0.220, -0.205, -0.430, "B2_06_FILETE_LABIO_DERECHO_R025");
-            bool aft = SwGeometry.TryFilletNear(doc, 0.045, 0.840, 0.230, -0.455, "B2_06_FILETE_BLEND_TRASERO_R045");
-            log(left || right || aft
-                ? "B2: toma inferior solida unida y blendada con la panza."
-                : "B2: toma inferior solida unida por Combine sin filetes adicionales.");
+            B2BodyOps.AddBodies(doc, mainBody, intakeBody, "B2_09_UNION_TOMA_CON_PANZA");
         }
 
         private void AddEquations(IModelDoc2 doc)
@@ -187,11 +192,15 @@ namespace NacelleSolidWorks
             double[] box = SwGeometry.BoundingBox(doc);
             double aftRatio = (cfg.GlobalAft - cfg.LeadingEdgeX) / cfg.LocalChord;
             return
-                "NACELA B2 - STAGE 1 FRENTE SOLIDO CORREGIDO\r\n" +
+                "NACELA B2 - STAGE 1 CUERPO VERDE SIMPLE\r\n" +
                 "Revision=" + cfg.Revision + "\r\n" +
-                "Nariz=UN_SOLO_LOFT_DESDE_CIRCULO_HASTA_OML\r\n" +
-                "Toma_inferior=SUPERELIPSE_CERRADA_MAS_COMBINE_ADD\r\n" +
-                "Saddle=POSPUESTO_PARA_REVISION_POSTERIOR\r\n" +
+                "Cuerpo_central=LOFT_ELIPTICO_SIN_GUIAS\r\n" +
+                "Nariz=LOFT_SEPARADO_CIRCULO_A_ELIPSES_MAS_COMBINE_ADD\r\n" +
+                "Toma_inferior=LOFT_RECTANGULO_REDONDEADO_MAS_COMBINE_ADD\r\n" +
+                "Union=3_CUERPOS_SOLIDOS_INTERSECTADOS\r\n" +
+                "Aft=INTERFAZ_ANCHA_SIN_BOATTAIL\r\n" +
+                "Guias=NO_EJECUTADAS\r\n" +
+                "Fillets=NO_EJECUTADOS\r\n" +
                 "Shell=NO_EJECUTADO\r\n" +
                 "Caladuras=NO_EJECUTADAS\r\n" +
                 "Bounding_L=" + F(box[3] - box[0]) + " m\r\n" +
