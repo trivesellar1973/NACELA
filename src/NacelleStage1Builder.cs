@@ -38,9 +38,9 @@ namespace NacelleSolidWorks
             IModelDoc2 doc = session.NewPart();
             AddEquations(doc);
 
-            // Envolvente interna de comprobacion. Es un croquis de construccion,
-            // no un cuerpo visible ni un motor ficticio.
-            double engineX1 = 0.300;
+            // La envolvente es solo referencia de empaquetado. El motor no se representa
+            // mediante un bloque visible y no se fusiona con la piel exterior.
+            double engineX1 = 0.240;
             double engineX2 = engineX1 + cfg.EngineLength;
             Feature envelope = SwGeometry.CreateEngineEnvelopeSketch(
                 doc, engineX1, engineX2, cfg.EngineWidth * 0.5,
@@ -64,24 +64,25 @@ namespace NacelleSolidWorks
             foreach (Feature feature in profiles) SwGeometry.HideFeatureSketch(doc, feature);
             foreach (Feature feature in guides) SwGeometry.HideFeatureSketch(doc, feature);
 
+            ValidateSingleSolid(doc, "OML principal");
             AddFrontGearboxBoss(doc);
-            AddUpperFairing(doc);
+            ValidateSingleSolid(doc, "OML y gearbox");
+            AddUpperSaddleFairing(doc);
+            ValidateSingleSolid(doc, "OML, gearbox y saddle fairing");
 
-            Feature axis = SwGeometry.CreateAxisSketch(doc, -0.20, cfg.XAft + 0.20, 0.0, 0.0, "00_REF_EJE_MOTOR_LOCAL");
+            Feature axis = SwGeometry.CreateAxisSketch(doc, -0.120, cfg.XAft + 0.160, 0.0, 0.0, "00_REF_EJE_MOTOR_LOCAL");
             SwGeometry.HideFeatureSketch(doc, axis);
 
-            doc.MaterialPropertyValues = new[] { cfg.SkinR, cfg.SkinG, cfg.SkinB, 1.0, 1.0, 0.40, 0.20, 0.0, 0.0 };
+            doc.MaterialPropertyValues = new[] { cfg.SkinR, cfg.SkinG, cfg.SkinB, 1.0, 1.0, 0.42, 0.22, 0.0, 0.0 };
             SwGeometry.HideConstruction(doc);
             doc.EditRebuild3();
 
-            ValidateSingleSolid(doc, "Stage 1");
+            ValidateSingleSolid(doc, "Stage 1 final");
             double[] box = SwGeometry.BoundingBox(doc);
             double lx = box[3] - box[0];
             double wy = box[4] - box[1];
             double hz = box[5] - box[2];
 
-            doc.ShowNamedView2("*Isometric", 7);
-            doc.ViewZoomtofit2();
             int saveError = doc.SaveAs3(partPath, 0, 2);
             if (saveError != 0) throw new IOException("No se pudo guardar Stage 1. Error=" + saveError);
 
@@ -89,45 +90,50 @@ namespace NacelleSolidWorks
             string reportPath = Path.Combine(output, "VALIDACION_STAGE1_" + cfg.Revision + ".txt");
             File.WriteAllText(reportPath, BuildReport(lx, wy, hz, SwGeometry.SolidBodyCount(doc), SwGeometry.SurfaceBodyCount(doc)));
 
-            log("Stage 1 OML creado: " + partPath);
+            log("Stage 1 profesional creado: " + partPath);
             log("Bounding box local: L=" + F(lx) + " W=" + F(wy) + " H=" + F(hz));
             return new BuildResult { Document = doc, PartPath = partPath, LogPath = reportPath, OutputDirectory = output };
         }
 
         private void AddFrontGearboxBoss(IModelDoc2 doc)
         {
-            Feature p0 = SwGeometry.CreateCircleSectionX(doc, 0.000, 0.0, 0.0, 0.340, "05_BOSS_FRONTAL_D340");
-            Feature p1 = SwGeometry.CreateCircleSectionX(doc, 0.055, 0.0, 0.0, 0.420, "05_FLANGE_FRONTAL_D420");
-            Feature p2 = SwGeometry.CreateEllipseSectionX(doc, 0.180, 0.0, -0.005, 0.500, 0.520, "05_TRANSICION_GEARBOX");
-            SwGeometry.SimpleMergedLoft(doc, new[] { p0, p1, p2 }, "05_BOSS_Y_TRANSICION_GEARBOX");
+            // Nariz escalonada suavemente, de menor diametro que el volumen principal.
+            Feature p0 = SwGeometry.CreateCircleSectionX(doc, 0.000, 0.0, 0.000, 0.300, "05_BOSS_FRONTAL_D300");
+            Feature p1 = SwGeometry.CreateCircleSectionX(doc, 0.045, 0.0, 0.000, 0.380, "05_FLANGE_FRONTAL_D380");
+            Feature p2 = SwGeometry.CreateEllipseSectionX(doc, 0.135, 0.0, -0.010, 0.480, 0.540, "05_TRANSICION_GEARBOX_1");
+            Feature p3 = SwGeometry.CreateEllipseSectionX(doc, 0.260, 0.0, -0.060, 0.650, 0.820, "05_TRANSICION_GEARBOX_2");
+            SwGeometry.SimpleMergedLoft(doc, new[] { p0, p1, p2, p3 }, "05_BOSS_Y_TRANSICION_GEARBOX");
             SwGeometry.HideFeatureSketch(doc, p0);
             SwGeometry.HideFeatureSketch(doc, p1);
             SwGeometry.HideFeatureSketch(doc, p2);
+            SwGeometry.HideFeatureSketch(doc, p3);
 
-            Feature h0 = SwGeometry.CreateCircleSectionX(doc, -0.020, 0.0, 0.0, 0.120, "05_HUECO_EJE_FRENTE");
-            Feature h1 = SwGeometry.CreateCircleSectionX(doc, 0.240, 0.0, 0.0, 0.120, "05_HUECO_EJE_INTERIOR");
+            Feature h0 = SwGeometry.CreateCircleSectionX(doc, -0.010, 0.0, 0.0, 0.115, "05_HUECO_EJE_FRENTE");
+            Feature h1 = SwGeometry.CreateCircleSectionX(doc, 0.270, 0.0, 0.0, 0.115, "05_HUECO_EJE_INTERIOR");
             Feature toolFeature = SwGeometry.LoftTool(doc, new[] { h0, h1 }, "05_HERRAMIENTA_HUECO_EJE");
             Body2 main = SwGeometry.LargestSolidBody(doc);
             Body2 tool = SwGeometry.BodyOf(toolFeature);
-            SwGeometry.SubtractBodies(doc, main, tool, "05_HUECO_CENTRAL_EJE_D120");
+            SwGeometry.SubtractBodies(doc, main, tool, "05_HUECO_CENTRAL_EJE_D115");
             SwGeometry.HideFeatureSketch(doc, h0);
             SwGeometry.HideFeatureSketch(doc, h1);
 
-            bool fillet = SwGeometry.TryFilletNear(doc, 0.040, 0.080, 0.205, 0.0, "05_FILETE_BOSS_R040");
-            log(fillet ? "Filete del boss creado." : "Aviso: filete del boss omitido; la transicion loft permanece continua.");
+            bool fillet = SwGeometry.TryFilletNear(doc, 0.035, 0.085, 0.205, 0.000, "05_FILETE_BOSS_R035");
+            log(fillet ? "Filete del boss creado." : "Aviso: filete del boss omitido; las transiciones loft siguen siendo continuas.");
         }
 
-        private void AddUpperFairing(IModelDoc2 doc)
+        private void AddUpperSaddleFairing(IModelDoc2 doc)
         {
             List<Feature> fairingProfiles = new List<Feature>();
             foreach (FairingSection section in cfg.FairingSections)
-                fairingProfiles.Add(SwGeometry.CreateFairingSection(doc, section, 0.0, "06_FAIRING_" + section.Name));
+                fairingProfiles.Add(SwGeometry.CreateFairingSection(doc, section, 0.0, "06_SADDLE_" + section.Name));
 
-            SwGeometry.SimpleMergedLoft(doc, fairingProfiles, "06_FAIRING_SUPERIOR_CORTO_" + cfg.Revision);
+            SwGeometry.SimpleMergedLoft(doc, fairingProfiles, "06_FAIRING_SUPERIOR_SADDLE_" + cfg.Revision);
             foreach (Feature feature in fairingProfiles) SwGeometry.HideFeatureSketch(doc, feature);
 
-            bool fillet = SwGeometry.TryFilletNear(doc, 0.030, 1.45, 0.22, 0.39, "06_FILETE_FAIRING_R030");
-            log(fillet ? "Filete del fairing creado." : "Aviso: filete del fairing omitido; no se agrego geometria de parche.");
+            bool frontFillet = SwGeometry.TryFilletNear(doc, 0.045, 0.860, 0.290, 0.520, "06_FILETE_SADDLE_DELANTERO_R045");
+            bool aftFillet = SwGeometry.TryFilletNear(doc, 0.055, 2.140, 0.245, 0.530, "06_FILETE_SADDLE_TRASERO_R055");
+            log(frontFillet ? "Filete delantero del saddle creado." : "Aviso: filete delantero del saddle omitido.");
+            log(aftFillet ? "Filete trasero del saddle creado." : "Aviso: filete trasero del saddle omitido.");
         }
 
         private void AddEquations(IModelDoc2 doc)
@@ -148,6 +154,7 @@ namespace NacelleSolidWorks
             Add(eq, "L_ENV_MOTOR", F(cfg.EngineLength) + "m");
             Add(eq, "W_ENV_MOTOR", F(cfg.EngineWidth) + "m");
             Add(eq, "H_ENV_MOTOR", F(cfg.EngineHeight) + "m");
+            Add(eq, "AREA_CAPTURA_TOTAL", F(cfg.IntakeRequiredArea) + "m^2");
         }
 
         private static void Add(IEquationMgr mgr, string name, string value)
@@ -157,21 +164,24 @@ namespace NacelleSolidWorks
 
         private string BuildReport(double lx, double wy, double hz, int solids, int surfaces)
         {
+            double aftRatio = (cfg.GlobalAft - cfg.LeadingEdgeX) / cfg.LocalChord;
             return
-                "NACELA SOLIDWORKS - VALIDACION STAGE 1 OML\r\n" +
+                "NACELA SOLIDWORKS - VALIDACION STAGE 1 OML A2\r\n" +
                 "Revision=" + cfg.Revision + "\r\n" +
-                "Metodo=Loft solido nativo con 10 perfiles cerrados y 4 guias continuas\r\n" +
+                "Referencia_visual=nacela verde transporte turbohelice\r\n" +
+                "Metodo=Loft solido nativo con 12 perfiles cerrados, 4 guias y saddle fairing\r\n" +
                 "Sistema_local=Origen en plano de helice y eje del motor\r\n" +
                 "Montaje_global_X=" + F(cfg.AssemblyX) + " m\r\n" +
                 "Montaje_global_Y=" + F(cfg.YMotor) + " m\r\n" +
                 "Montaje_global_Z=" + F(cfg.ZAxis) + " m\r\n" +
                 "X_global_nacela=[" + F(cfg.GlobalFront) + "," + F(cfg.GlobalAft) + "] m\r\n" +
+                "X_AFT_sobre_c_local=" + F(aftRatio) + "\r\n" +
                 "BoundingBox_L=" + F(lx) + " m\r\n" +
                 "BoundingBox_W=" + F(wy) + " m\r\n" +
                 "BoundingBox_H=" + F(hz) + " m\r\n" +
                 "Solidos=" + solids + "\r\n" +
                 "Superficies=" + surfaces + "\r\n" +
-                "Estado=OML_LISTO_PARA_STAGE2\r\n";
+                "Estado=OML_SADDLE_LISTO_PARA_STAGE2\r\n";
         }
 
         private static void ValidateSingleSolid(IModelDoc2 doc, string stage)
