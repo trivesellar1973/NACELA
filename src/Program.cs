@@ -21,47 +21,29 @@ namespace NacelleSolidWorks
                 executionLog = Path.Combine(root, "ultimo_ejecucion.log");
 
                 Log("Repositorio: " + root);
-                B1Config cfg = B1Config.Load(root);
-                Log("Revision limpia activa: " + cfg.Revision);
+                B2Config cfg = B2Config.Load(root);
+                Log("Revision activa: " + cfg.Revision);
                 Log("Comando: " + command);
 
-                if (command != "stage1" && command != "stage2" && command != "stage3" && command != "review")
-                    throw new InvalidOperationException("Comando valido: stage1, stage2, stage3 o review.");
+                if (command != "stage1" && command != "review")
+                    throw new InvalidOperationException("B2 solo admite stage1 o review. Todavia no hay shell, conductos, escapes ni paneles.");
 
                 SwSession session = SwSession.Connect(Log);
+                B2BuildResult stage1 = new B2Stage1Builder(session, cfg, root, Log).Build();
+                string assembly = new B2AssemblyReviewBuilder(session, cfg, Log).Build(stage1.OutputDirectory, stage1.PartPath);
 
-                B1BuildResult stage1 = new B1Stage1Builder(session, cfg, root, Log).Build();
-                B1BuildResult finalResult = stage1;
-                B1BuildResult stage2 = null;
-                B1BuildResult stage3 = null;
-
-                if (command == "stage2" || command == "stage3" || command == "review")
-                {
-                    stage2 = new B1Stage2Builder(session, cfg, Log).Build(stage1);
-                    finalResult = stage2;
-                }
-
-                if (command == "stage3" || command == "review")
-                {
-                    stage3 = new B1Stage3Builder(session, cfg, Log).Build(stage2);
-                    finalResult = stage3;
-                }
-
-                string assembly = new B1AssemblyReviewBuilder(session, cfg, Log).Build(finalResult.OutputDirectory, finalResult.PartPath);
-
-                Log("RESULTADO_B1_STAGE1=" + stage1.PartPath);
-                if (stage2 != null) Log("RESULTADO_B1_STAGE2=" + stage2.PartPath);
-                if (stage3 != null) Log("RESULTADO_B1_STAGE3=" + stage3.PartPath);
-                if (!String.IsNullOrWhiteSpace(assembly)) Log("RESULTADO_B1_ENSAMBLE=" + assembly);
-                else Log("RESULTADO_B1_ENSAMBLE=OMITIDO_POR_FALTA_DE_ALA_BASE");
-                Log("RESULTADO_B1_REPORTE=" + finalResult.ReportPath);
-                Log("B1 finalizado correctamente.");
+                Log("RESULTADO_B2_STAGE1=" + stage1.PartPath);
+                if (!String.IsNullOrWhiteSpace(assembly)) Log("RESULTADO_B2_ENSAMBLE=" + assembly);
+                else Log("RESULTADO_B2_ENSAMBLE=OMITIDO_POR_FALTA_DE_ALA_BASE");
+                Log("RESULTADO_B2_REPORTE=" + stage1.ReportPath);
+                Log("B2 finalizado correctamente.");
 
                 File.WriteAllText(executionLog, JoinMessages(), Encoding.UTF8);
-                Console.WriteLine("\nLISTO. La nacela B1 fue reconstruida desde cero.");
-                Console.WriteLine("No se reutilizo la geometria A0/A1/A2.");
+                Console.WriteLine("\nLISTO. Se genero B2 con el frente completamente nuevo.");
+                Console.WriteLine("Boss del spinner y toma inferior permanecen solidos y cerrados.");
+                Console.WriteLine("No se ejecutaron shell, caladuras, conductos, escapes ni paneles.");
                 if (!String.IsNullOrWhiteSpace(assembly))
-                    Console.WriteLine("Se creo tambien el ensamblaje B1 en la estacion y=4.30 m.");
+                    Console.WriteLine("Se creo el ensamblaje B2 en la estacion y=4.30 m.");
                 return 0;
             }
             catch (Exception ex)
