@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 560" width="1180" height="560">
+<defs>
+  <marker id="arrow" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto-start-reverse">
+    <path d="M0,0 L7,3.5 L0,7 z" fill="#111"/>
+  </marker>
+  <style>
+    .outline { fill:#f5f5f5; stroke:#111; stroke-width:2; }
+    .reference { fill:none; stroke:#666; stroke-width:1.4; stroke-dasharray:7 5; }
+    .duct { fill:none; stroke:#005a8d; stroke-width:2.2; }
+    .engine { fill:none; stroke:#a13b00; stroke-width:2; stroke-dasharray:8 4; }
+    .gear { fill:none; stroke:#684c8c; stroke-width:2; stroke-dasharray:5 4; }
+    text { font-family:Arial,Helvetica,sans-serif; fill:#111; }
+  </style>
+</defs>
+<polyline points="124.2,217.7 181.0,199.3 272.7,184.7 401.0,181.0 538.5,184.7 676.0,197.5 822.7,212.2 941.8,232.3 1024.3,265.3 1024.3,379.0 941.8,412.0 822.7,428.5 676.0,435.8 538.5,441.3 401.0,441.3 272.7,430.3 181.0,408.3 124.2,382.7 124.2,217.7" class="outline"/><polyline points="373.5,166.5 916.0,193.3 916.0,214.0 373.5,243.2 373.5,166.5" class="reference"/><text x="547.7" y="146.2" font-size="13">Ala local c=2.959 m</text><polyline points="144.3,212.2 534.8,212.2 534.8,366.2 144.3,366.2 144.3,212.2" class="engine"/><text x="281.8" y="280.0" font-size="13" text-anchor="middle">Envolvente PW127XT-M</text><polyline points="153.5,379.0 214.0,371.7 391.8,318.5" class="duct"/><text x="254.3" y="424.8" font-size="13" fill="#005a8d">Toma inferior + difusor</text><polyline points="688.8,278.2 974.8,278.2 974.8,424.8 688.8,424.8 688.8,278.2" class="gear"/><text x="831.8" y="366.2" font-size="13" fill="#684c8c" text-anchor="middle">Reserva tren principal</text><line x1="102.2" y1="-71.1" x2="102.2" y2="649.4" class="reference"/><text x="94.2" y="-79.1" font-size="13" text-anchor="end">Disco helice Ø 3.93 m</text><line x1="124.2" y1="535.0" x2="1024.3" y2="535.0" stroke="#111" stroke-width="1.3" marker-start="url(#arrow)" marker-end="url(#arrow)"/><text x="574.3" y="528.0" text-anchor="middle" font-size="13">L nacela = 4.91 m</text><line x1="1135.0" y1="159.0" x2="1135.0" y2="419.3" stroke="#111" stroke-width="1.3" marker-start="url(#arrow)" marker-end="url(#arrow)"/><text x="1151.0" y="289.2" text-anchor="middle" font-size="13" transform="rotate(-90 1151.0 289.2)">H max = 1.42 m</text><text x="30.0" y="30.0" font-size="18" font-weight="bold">Nacela PW127XT-M - TFG Dolcini/Simo - Vista lateral - Rev. A0</text></svg>
