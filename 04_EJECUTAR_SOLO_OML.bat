@@ -10,13 +10,13 @@ if errorlevel 1 (
 )
 
 echo.
-echo Generando solamente B1 Stage 1: OML nueva, gearbox y saddle...
+echo Generando B2 Stage 1: OML, boss circular, toma inferior solida y saddle...
 "%~dp0bin\NacelleBuilder.exe" stage1
 set "ERR=%ERRORLEVEL%"
 if not "%ERR%"=="0" (
-  echo Fallo B1 Stage 1. Revise ultimo_ejecucion.log.
+  echo Fallo B2 Stage 1. Revise ultimo_ejecucion.log.
 ) else (
-  echo B1 Stage 1 creado en generated\B1.
+  echo B2 Stage 1 creado en generated\B2.
 )
 pause
 exit /b %ERR%
