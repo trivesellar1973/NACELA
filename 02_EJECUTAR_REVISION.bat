@@ -12,14 +12,13 @@ if errorlevel 1 (
 
 echo.
 echo ============================================================
-echo   NACELA B2 - FRENTE SOLIDO NUEVO DESDE CERO
+echo   NACELA B2 - FRENTE SOLIDO CORREGIDO
 echo ============================================================
 echo Se genera solamente:
-echo   - OML principal nueva
-echo   - boss circular del spinner integrado por loft
-echo   - toma inferior rectangular ovalada completamente cerrada
-echo   - saddle superior suave
-echo No se generan shell, huecos, conductos, escapes ni paneles.
+echo   - un unico loft desde el circulo del spinner hasta la OML
+echo   - toma inferior rectangular ovalada, solida y cerrada
+echo   - union booleana Combine/Add con la panza
+echo No se generan saddle, shell, huecos, conductos, escapes ni paneles.
 echo.
 "%~dp0bin\NacelleBuilder.exe" review
 set "ERR=%ERRORLEVEL%"
