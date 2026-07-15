@@ -11,7 +11,7 @@ namespace NacelleSolidWorks
 
         private static int Main(string[] args)
         {
-            string command = args.Length > 0 ? args[0].ToLowerInvariant() : "stage1";
+            string command = args.Length > 0 ? args[0].ToLowerInvariant() : "review";
             string root = null;
             string executionLog = null;
 
@@ -23,29 +23,35 @@ namespace NacelleSolidWorks
                 Log("Repositorio: " + root);
                 NacelleConfig cfg = NacelleConfig.Load(root);
                 Log("Revision: " + cfg.Revision);
+                Log("Comando: " + command);
 
-                if (command != "stage1" && command != "review")
-                    throw new InvalidOperationException("Esta revision solo habilita STAGE1. Toma, escapes y capos se agregaran despues de aprobar la captura.");
+                if (command != "stage1" && command != "stage2" && command != "review")
+                    throw new InvalidOperationException("Comando valido: stage1, stage2 o review.");
 
                 SwSession session = SwSession.Connect(Log);
 
-                // La nacela se crea siempre desde una pieza nueva. No requiere ningun
-                // archivo previo de nacela, STEP, IGES ni cuerpo importado.
-                BuildResult result = new NacelleStage1Builder(session, cfg, root, Log).Build();
+                BuildResult stage1 = new NacelleStage1Builder(session, cfg, root, Log).Build();
+                BuildResult finalResult = stage1;
 
-                string assembly = new AssemblyReviewBuilder(session, cfg, Log).Build(result.OutputDirectory, result.PartPath);
-                Log("RESULTADO_PIEZA=" + result.PartPath);
+                if (command == "stage2" || command == "review")
+                    finalResult = new NacelleStage2Builder(session, cfg, Log).Build(stage1);
+
+                string assembly = new AssemblyReviewBuilder(session, cfg, Log).Build(finalResult.OutputDirectory, finalResult.PartPath);
+
+                Log("RESULTADO_STAGE1=" + stage1.PartPath);
+                if (finalResult.PartPath != stage1.PartPath) Log("RESULTADO_STAGE2=" + finalResult.PartPath);
                 if (!String.IsNullOrWhiteSpace(assembly)) Log("RESULTADO_ENSAMBLE=" + assembly);
                 else Log("RESULTADO_ENSAMBLE=OMITIDO_POR_FALTA_DE_ALA_BASE");
-                Log("RESULTADO_REPORTE=" + result.LogPath);
+                Log("RESULTADO_REPORTE=" + finalResult.LogPath);
                 Log("Ejecucion finalizada correctamente.");
 
                 File.WriteAllText(executionLog, JoinMessages(), Encoding.UTF8);
                 Console.WriteLine("\nLISTO. La nacela fue generada desde cero.");
+                Console.WriteLine(command == "stage1"
+                    ? "Se genero el OML limpio de Stage 1."
+                    : "Se genero Stage 1 y luego Stage 2 con toma principal, escapes y NACA.");
                 if (!String.IsNullOrWhiteSpace(assembly))
-                    Console.WriteLine("Tambien se creo el ensamblaje de revision con el ala.");
-                else
-                    Console.WriteLine("No se encontro el ala base; se genero igualmente la pieza de nacela.");
+                    Console.WriteLine("Tambien se creo el ensamblaje de revision con posicion global explicita.");
                 return 0;
             }
             catch (Exception ex)
