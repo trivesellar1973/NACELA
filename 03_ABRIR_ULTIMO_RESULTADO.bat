@@ -10,11 +10,23 @@ if not defined REV (
   pause
   exit /b 1
 )
-set "FILE=%~dp0generated\%REV%\ALA_REVIEW_NACELA_DER_%REV%.SLDASM"
-if not exist "%FILE%" (
-  echo No existe: %FILE%
-  echo Ejecute primero 02_EJECUTAR_REVISION.bat
-  pause
-  exit /b 2
+
+set "ASM=%~dp0generated\%REV%\ALA_REVIEW_NACELA_DER_%REV%.SLDASM"
+set "PART=%~dp0generated\%REV%\NACELA_DERECHA_%REV%_STAGE1.SLDPRT"
+
+if exist "%ASM%" (
+  start "" "%ASM%"
+  exit /b 0
 )
-start "" "%FILE%"
+
+if exist "%PART%" (
+  echo No se genero ensamblaje de revision porque no estaba instalada el ala.
+  echo Abriendo la nacela creada desde cero.
+  start "" "%PART%"
+  exit /b 0
+)
+
+echo No existe ningun resultado de la revision %REV%.
+echo Ejecute primero 02_EJECUTAR_REVISION.bat
+pause
+exit /b 2
