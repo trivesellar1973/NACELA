@@ -13,7 +13,7 @@ echo Carpeta local: %CD%
 echo.
 
 rem ------------------------------------------------------------
-rem Caso 1: copia clonada con Git. Usa actualizacion normal.
+rem Caso 1: copia clonada con Git.
 rem ------------------------------------------------------------
 if exist ".git\" (
     where git >nul 2>&1
@@ -34,6 +34,7 @@ if exist ".git\" (
         exit /b 1
     )
 
+    call :CLEAN_LEGACY
     echo.
     echo Repositorio actualizado correctamente con Git.
     pause
@@ -41,8 +42,7 @@ if exist ".git\" (
 )
 
 rem ------------------------------------------------------------
-rem Caso 2: carpeta descargada como ZIP. Descarga main y copia
-rem los archivos nuevos sin borrar resultados ni config local.
+rem Caso 2: carpeta descargada como ZIP.
 rem ------------------------------------------------------------
 echo No se encontro la carpeta .git.
 echo Esta copia fue descargada como ZIP; se usara actualizacion directa.
@@ -91,8 +91,26 @@ if %ROBOCOPY_CODE% GEQ 8 (
     exit /b 1
 )
 
+call :CLEAN_LEGACY
+
 echo.
 echo Proyecto actualizado correctamente desde el ZIP de GitHub.
 echo Se conservaron generated\, config\local.ini y ultimo_ejecucion.log.
+echo Se eliminaron fuentes antiguas que podian duplicar clases B1.
 pause
+exit /b 0
+
+:CLEAN_LEGACY
+rem Las actualizaciones ZIP no eliminan archivos que desaparecieron del repo.
+rem Estos builders y tipos pertenecen a A0/A1/A2 y no deben compilarse en B1.
+for %%F in (
+  "src\NacelleConfig.cs"
+  "src\LegacyGeometryTypes.cs"
+  "src\NacelleStage1Builder.cs"
+  "src\NacelleStage2Builder.cs"
+  "src\NacelleStage3Builder.cs"
+  "src\AssemblyReviewBuilder.cs"
+) do (
+  if exist "%%~F" del /q "%%~F" >nul 2>&1
+)
 exit /b 0
