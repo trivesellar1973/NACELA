@@ -21,8 +21,8 @@ namespace NacelleSolidWorks
                 executionLog = Path.Combine(root, "ultimo_ejecucion.log");
 
                 Log("Repositorio: " + root);
-                NacelleConfig cfg = NacelleConfig.Load(root);
-                Log("Revision: " + cfg.Revision);
+                B1Config cfg = B1Config.Load(root);
+                Log("Revision limpia activa: " + cfg.Revision);
                 Log("Comando: " + command);
 
                 if (command != "stage1" && command != "stage2" && command != "stage3" && command != "review")
@@ -30,45 +30,38 @@ namespace NacelleSolidWorks
 
                 SwSession session = SwSession.Connect(Log);
 
-                BuildResult stage1 = new NacelleStage1Builder(session, cfg, root, Log).Build();
-                BuildResult finalResult = stage1;
-                BuildResult stage2 = null;
-                BuildResult stage3 = null;
+                B1BuildResult stage1 = new B1Stage1Builder(session, cfg, root, Log).Build();
+                B1BuildResult finalResult = stage1;
+                B1BuildResult stage2 = null;
+                B1BuildResult stage3 = null;
 
                 if (command == "stage2" || command == "stage3" || command == "review")
                 {
-                    stage2 = new NacelleStage2Builder(session, cfg, Log).Build(stage1);
+                    stage2 = new B1Stage2Builder(session, cfg, Log).Build(stage1);
                     finalResult = stage2;
                 }
 
-                // La revision normal se detiene en Stage 2. Primero se aprueban OML,
-                // integracion, toma y escapes; los capos se ejecutan de forma explicita.
-                if (command == "stage3")
+                if (command == "stage3" || command == "review")
                 {
-                    stage3 = new NacelleStage3Builder(session, cfg, Log).Build(stage2);
+                    stage3 = new B1Stage3Builder(session, cfg, Log).Build(stage2);
                     finalResult = stage3;
                 }
 
-                string assembly = new AssemblyReviewBuilder(session, cfg, Log).Build(finalResult.OutputDirectory, finalResult.PartPath);
+                string assembly = new B1AssemblyReviewBuilder(session, cfg, Log).Build(finalResult.OutputDirectory, finalResult.PartPath);
 
-                Log("RESULTADO_STAGE1=" + stage1.PartPath);
-                if (stage2 != null) Log("RESULTADO_STAGE2=" + stage2.PartPath);
-                if (stage3 != null) Log("RESULTADO_STAGE3=" + stage3.PartPath);
-                if (!String.IsNullOrWhiteSpace(assembly)) Log("RESULTADO_ENSAMBLE=" + assembly);
-                else Log("RESULTADO_ENSAMBLE=OMITIDO_POR_FALTA_DE_ALA_BASE");
-                Log("RESULTADO_REPORTE=" + finalResult.LogPath);
-                Log("Ejecucion finalizada correctamente.");
+                Log("RESULTADO_B1_STAGE1=" + stage1.PartPath);
+                if (stage2 != null) Log("RESULTADO_B1_STAGE2=" + stage2.PartPath);
+                if (stage3 != null) Log("RESULTADO_B1_STAGE3=" + stage3.PartPath);
+                if (!String.IsNullOrWhiteSpace(assembly)) Log("RESULTADO_B1_ENSAMBLE=" + assembly);
+                else Log("RESULTADO_B1_ENSAMBLE=OMITIDO_POR_FALTA_DE_ALA_BASE");
+                Log("RESULTADO_B1_REPORTE=" + finalResult.ReportPath);
+                Log("B1 finalizado correctamente.");
 
                 File.WriteAllText(executionLog, JoinMessages(), Encoding.UTF8);
-                Console.WriteLine("\nLISTO. La nacela A2 fue generada desde cero.");
-                if (command == "stage1")
-                    Console.WriteLine("Se genero OML, gearbox y saddle fairing.");
-                else if (command == "stage3")
-                    Console.WriteLine("Se generaron tambien capos y paneles funcionales.");
-                else
-                    Console.WriteLine("Se generaron OML, toma chin, escapes enrasados y NACA.");
+                Console.WriteLine("\nLISTO. La nacela B1 fue reconstruida desde cero.");
+                Console.WriteLine("No se reutilizo la geometria A0/A1/A2.");
                 if (!String.IsNullOrWhiteSpace(assembly))
-                    Console.WriteLine("Tambien se creo el ensamblaje de revision con posicion global explicita.");
+                    Console.WriteLine("Se creo tambien el ensamblaje B1 en la estacion y=4.30 m.");
                 return 0;
             }
             catch (Exception ex)
