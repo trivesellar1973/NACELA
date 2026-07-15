@@ -16,7 +16,7 @@ echo.
 echo Ejecutando generador nativo de SOLIDWORKS - REVISION PROFESIONAL A2...
 echo Stage 1: OML, gearbox, envolvente y saddle fairing.
 echo Stage 2: toma chin, ducto, escapes enrasados y entradas NACA.
-echo Stage 3: capos laterales, firewall y panel de servicio.
+echo Los capos quedan para el comando Stage 3 despues de aprobar esta forma.
 "%~dp0bin\NacelleBuilder.exe" review
 set "ERR=%ERRORLEVEL%"
 
