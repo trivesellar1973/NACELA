@@ -1,0 +1,155 @@
+project:
+  name: "Nacela PW127XT-M - TFG Dolcini/Simo"
+  revision: "A0"
+  units: "m"
+  coordinate_system:
+    x: "positivo hacia popa"
+    y: "positivo hacia estribor / semiala exterior"
+    z: "positivo hacia arriba"
+    origin: "borde de ataque local del ala, eje del motor en y=0"
+
+reference_aircraft:
+  mtow_kg: 23100
+  configuration: "bimotor turbohelice, ala alta, tren principal retraido en nacelas"
+  engine_count: 2
+  engine_model: "Pratt & Whitney Canada PW127XT-M"
+  propeller_model: "Hamilton Sundstrand 568F-1"
+
+wing:
+  area_m2: 79.0
+  span_m: 29.5
+  aspect_ratio: 11.0
+  taper_ratio: 0.600
+  root_chord_m: 3.35
+  tip_chord_m: 2.01
+  quarter_chord_sweep_deg: 0.0
+  root_thickness_ratio: 0.150
+  tip_thickness_ratio: 0.120
+  root_airfoil: "NACA 23015"
+  tip_airfoil: "NACA 23012"
+  motor_y_m: 4.30
+  wing_incidence_deg: 2.0
+  local_chord_line_z_m: 0.46
+  local_section_span_m: 1.80
+  flap:
+    eta_in: 0.070
+    eta_out: 0.630
+    chord_ratio: 0.350
+    takeoff_deflection_deg: 35.0
+    landing_deflection_deg: 40.0
+  spoiler:
+    eta_inner_panel_in: 0.070
+    eta_inner_panel_out: 0.236
+    eta_outer_panel_in: 0.348
+    eta_outer_panel_out: 0.811
+    x_over_c_in: 0.240
+    x_over_c_out: 0.590
+    chord_ratio: 0.350
+
+engine_envelope:
+  # PW127XT-M mantiene la familia de instalacion PW127. Esta envolvente es
+  # preliminar y debe reemplazarse por el installation drawing del fabricante.
+  overall_length_m: 2.13
+  max_diameter_m: 0.84
+  gearbox_diameter_m: 0.92
+  gearbox_length_m: 0.52
+  dry_mass_kg: 481
+  propeller_axis_z_m: 0.00
+  propeller_plane_x_m: -1.48
+  engine_front_x_m: -1.25
+  engine_aft_x_m: 0.88
+  firewall_x_m: 0.98
+  accessory_clearance_radial_m: 0.16
+  service_clearance_radial_m: 0.08
+
+propeller:
+  diameter_m: 3.93
+  blade_count: 6
+  spinner_length_m: 0.72
+  spinner_max_diameter_m: 0.62
+  disk_thickness_m: 0.035
+
+nacelle:
+  shell_thickness_m: 0.004
+  inlet_lip_thickness_m: 0.020
+  front_x_m: -1.36
+  aft_x_m: 3.55
+  maximum_width_m: 1.22
+  maximum_height_m: 1.42
+  stations:
+    # x, full width, full height, vertical centre. Elliptical preliminary loft.
+    - {x_m: -1.36, width_m: 0.78, height_m: 0.90, z_center_m: -0.06}
+    - {x_m: -1.05, width_m: 1.02, height_m: 1.14, z_center_m: -0.08}
+    - {x_m: -0.55, width_m: 1.18, height_m: 1.34, z_center_m: -0.10}
+    - {x_m:  0.15, width_m: 1.22, height_m: 1.42, z_center_m: -0.12}
+    - {x_m:  0.90, width_m: 1.20, height_m: 1.40, z_center_m: -0.13}
+    - {x_m:  1.65, width_m: 1.12, height_m: 1.30, z_center_m: -0.15}
+    - {x_m:  2.45, width_m: 1.04, height_m: 1.18, z_center_m: -0.17}
+    - {x_m:  3.10, width_m: 0.88, height_m: 0.98, z_center_m: -0.18}
+    - {x_m:  3.55, width_m: 0.52, height_m: 0.62, z_center_m: -0.18}
+  panel_breaks_x_m: [-0.98, -0.35, 0.45, 1.05, 1.80, 2.55, 3.15]
+  minimum_engine_shell_clearance_m: 0.09
+
+intake:
+  type: "toma inferior tipo chin, labio redondeado y difusor curvo"
+  capture_area_m2: 0.305
+  compressor_face_area_m2: 0.255
+  area_ratio_exit_to_capture: 0.836
+  lip_x_m: -1.20
+  lip_width_m: 0.74
+  lip_height_m: 0.525
+  lip_z_center_m: -0.49
+  throat_x_m: -0.87
+  throat_width_m: 0.64
+  throat_height_m: 0.43
+  diffuser_exit_x_m: 0.10
+  diffuser_exit_width_m: 0.68
+  diffuser_exit_height_m: 0.477
+  diffuser_exit_z_center_m: -0.16
+  minimum_internal_radius_m: 0.12
+  max_equivalent_diffuser_angle_deg: 7.0
+  inertial_separator_reserved: true
+
+exhaust:
+  arrangement: "salida lateral unica configurable; lado exterior por defecto"
+  side: "outboard"
+  duct_start_x_m: 0.72
+  outlet_x_m: 1.62
+  outlet_y_m: 0.51
+  outlet_z_m: 0.10
+  outlet_width_m: 0.32
+  outlet_height_m: 0.18
+  nozzle_length_m: 0.50
+  wall_thickness_m: 0.003
+
+landing_gear_bay:
+  enabled: true
+  x_front_m: 1.72
+  x_aft_m: 3.28
+  width_m: 0.72
+  height_m: 0.80
+  z_center_m: -0.34
+  door_gap_m: 0.010
+  note: "volumen reservado; el tren se dimensiona en el capitulo correspondiente"
+
+mounts:
+  forward_ring_x_m: -0.22
+  aft_ring_x_m: 0.68
+  ring_outer_diameter_m: 0.94
+  ring_inner_diameter_m: 0.74
+  ring_thickness_m: 0.035
+  upper_mount_z_m: 0.38
+
+model_options:
+  include_propeller_disk: true
+  include_engine_envelope: true
+  include_wing_reference: true
+  include_gear_bay_envelope: true
+  export_stl_tolerance_mm: 0.25
+
+source_confidence:
+  project_geometry: "alta - informes TFG capitulos 1 a 3"
+  engine_model_and_propeller_model: "alta - EASA TCDS A.084"
+  engine_external_envelope: "media - familia PW127; requiere plano de instalacion OEM"
+  nacelle_outer_stations: "preliminar - ajuste geometrico de integracion"
+  inlet_and_exhaust_geometry: "preliminar - requiere CFD y datos de flujo del motor"
