@@ -15,10 +15,10 @@ echo ============================================================
 echo   NACELA B2 - SOLO CUERPO VERDE SIMPLE
 echo ============================================================
 echo Se genera solamente:
+echo   - circulo frontal como primer loft solido
 echo   - cuerpo central mediante un loft de elipses sin guias
-echo   - circulo frontal unido al cuerpo con un loft independiente
 echo   - toma inferior rectangular redondeada con otro loft
-echo   - uniones solidas mediante Combine/Add
+echo   - fusion directa en cada loft, sin cuerpos solapados ni Combine/Add
 echo No se generan pieza azul posterior, saddle, shell, huecos, conductos,
 echo escapes, tomas laterales ni paneles.
 echo.
