@@ -46,19 +46,26 @@ namespace NacelleSolidWorks
 
         public static Feature CreateRoundedRectangleSectionX(IModelDoc2 doc, B2RoundedSection s, string name)
         {
-            double r = Math.Min(s.CornerRadius, Math.Min(s.Width, s.Height) * 0.49);
-            const int arcPoints = 14;
-            List<double> points = new List<double>();
+            // Superelipse cerrada de exponente 4.2. Es visualmente un rectangulo
+            // ovalado, pero evita puntos duplicados y oscilaciones en las esquinas.
+            // Todos los perfiles usan exactamente la misma parametrizacion, lo que
+            // reduce mucho los giros y fallos del loft de SOLIDWORKS.
+            const int count = 80;
+            const double exponent = 4.2;
+            double power = 2.0 / exponent;
+            double[] points = new double[(count + 1) * 3];
 
-            AddCorner(points, s.X, +s.Width * 0.5 - r, s.ZCenter + s.Height * 0.5 - r, r, 0.0, Math.PI * 0.5, arcPoints);
-            AddCorner(points, s.X, -s.Width * 0.5 + r, s.ZCenter + s.Height * 0.5 - r, r, Math.PI * 0.5, Math.PI, arcPoints);
-            AddCorner(points, s.X, -s.Width * 0.5 + r, s.ZCenter - s.Height * 0.5 + r, r, Math.PI, Math.PI * 1.5, arcPoints);
-            AddCorner(points, s.X, +s.Width * 0.5 - r, s.ZCenter - s.Height * 0.5 + r, r, Math.PI * 1.5, Math.PI * 2.0, arcPoints);
+            for (int i = 0; i <= count; i++)
+            {
+                double angle = 2.0 * Math.PI * i / count;
+                double c = Math.Cos(angle);
+                double sn = Math.Sin(angle);
+                points[3 * i] = s.X;
+                points[3 * i + 1] = s.Width * 0.5 * SignedPower(c, power);
+                points[3 * i + 2] = s.ZCenter + s.Height * 0.5 * SignedPower(sn, power);
+            }
 
-            points.Add(points[0]);
-            points.Add(points[1]);
-            points.Add(points[2]);
-            return CreateClosedSpline(doc, points.ToArray(), name);
+            return CreateClosedSpline(doc, points, name);
         }
 
         public static Feature CreateSaddleSection(IModelDoc2 doc, B2SaddleSection s, string name)
@@ -83,17 +90,6 @@ namespace NacelleSolidWorks
                 s.X, -half, s.ZTop - 0.06 * h
             };
             return CreateClosedSpline(doc, points, name);
-        }
-
-        private static void AddCorner(List<double> points, double x, double yCenter, double zCenter, double radius, double a0, double a1, int count)
-        {
-            for (int i = 0; i <= count; i++)
-            {
-                double a = a0 + (a1 - a0) * i / count;
-                points.Add(x);
-                points.Add(yCenter + radius * Math.Cos(a));
-                points.Add(zCenter + radius * Math.Sin(a));
-            }
         }
 
         private static Feature CreateClosedSpline(IModelDoc2 doc, double[] points, string name)
