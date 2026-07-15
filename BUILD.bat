@@ -28,6 +28,7 @@ for %%F in (
   "%~dp0src\SwGeometryCompatTypes.cs"
   "%~dp0src\B2Config.cs"
   "%~dp0src\B2Geometry.cs"
+  "%~dp0src\B2BodyOps.cs"
   "%~dp0src\B2Stage1Builder.cs"
   "%~dp0src\B2AssemblyReviewBuilder.cs"
 ) do (
@@ -56,6 +57,7 @@ del /q "%~dp0bin\SolidWorks.Interop.sldworks.dll" >nul 2>&1
   "%~dp0src\SwGeometryCompatTypes.cs" ^
   "%~dp0src\B2Config.cs" ^
   "%~dp0src\B2Geometry.cs" ^
+  "%~dp0src\B2BodyOps.cs" ^
   "%~dp0src\B2Stage1Builder.cs" ^
   "%~dp0src\B2AssemblyReviewBuilder.cs"
 if errorlevel 1 (
