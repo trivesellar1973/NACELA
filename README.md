@@ -1,127 +1,104 @@
-# NACELA — integración paramétrica PW127XT-M
+# NACELA — generador nativo para SOLIDWORKS 2021
 
-Modelo CAD paramétrico, a escala real, de una nacela para el avión bimotor turbohélice del TFG de Dolcini/Simo. El repositorio integra la envolvente preliminar del motor **Pratt & Whitney Canada PW127XT-M**, una hélice de seis palas, la sección local del ala, la toma inferior, el escape lateral, el mamparo cortafuego, los anclajes y el volumen reservado para el tren principal.
+Este repositorio reemplaza el prototipo de FreeCAD/CadQuery. El entregable es un programa **C#/.NET Framework** que controla SOLIDWORKS mediante su API COM y crea operaciones nativas editables: croquis 3D, splines cerradas, lofts sólidos, curvas guía, fairing y ensamblaje de revisión.
 
-> **Alcance real:** esto no es un juguete ni una carcasa decorativa. Es un modelo de integración preliminar reproducible, con controles geométricos y piezas separadas por función. **Tampoco es una definición aeronavegable**: faltan el installation drawing OEM, caudales y límites térmicos del motor, cargas certificadas, cálculo estructural, CFD, protección contra fuego, drenajes, ventilación y definición de mantenimiento.
+No usa STEP, IGES, STL ni cuerpos importados.
 
-## Vista geométrica
+## Estado actual
 
-| Lateral | Frontal |
-|---|---|
-| ![Vista lateral](docs/generated/nacelle_side.svg) | ![Vista frontal](docs/generated/nacelle_front.svg) |
+La revisión `A0` genera solamente el **Stage 1**:
 
-![Vista en planta](docs/generated/nacelle_plan.svg)
+- cuerpo exterior OML de la nacela derecha;
+- diez secciones cerradas y asimétricas;
+- cuatro curvas guía continuas;
+- loft sólido nativo;
+- fairing superior corto ajustado al intradós medido;
+- eje de motor de referencia;
+- pieza independiente `.SLDPRT`;
+- copia del ensamblaje del ala con la nacela insertada y fijada;
+- imagen BMP y reporte geométrico.
 
-## Parámetros principales
-
-| Parámetro | Valor |
-|---|---:|
-| Motor | PW127XT-M |
-| Potencia termodinámica / mecánica publicada | 3360 ESHP / 2750 SHP |
-| Régimen máximo de hélice | 1200 rpm |
-| Hélice de referencia | Hamilton Sundstrand 568F-1, 6 palas |
-| Diámetro de hélice adoptado | 3.93 m |
-| Superficie alar | 79.0 m² |
-| Envergadura | 29.5 m |
-| Estación transversal del motor | y = ±4.30 m, η = 0.292 |
-| Cuerda local calculada | 2.959 m |
-| Espesor relativo local | 0.141 |
-| Longitud total de nacela | 4.91 m |
-| Ancho / alto máximos | 1.22 / 1.42 m |
-| Área de captura de la toma | 0.305 m² |
-
-Los valores de ala y posición del motor provienen de los Informes Técnicos THR-001/26 a THR-003/26. La configuración motor–hélice se contrasta con el TCDS EASA.A.084 y la ficha oficial de Pratt & Whitney. Las dimensiones externas exactas del **PW127XT-M** no son públicas en el TCDS; por eso la envolvente CAD se declara expresamente como preliminar.
-
-## Qué genera
-
-`src/nacelle_model.py` exporta objetos STEP separados:
-
-- `nacelle_shell`: piel hueca de la nacela.
-- `outer_mold_line`: volumen exterior de referencia.
-- `intake_duct` e `intake_flowpath`: toma inferior y volumen de flujo.
-- `exhaust_duct` y `exhaust_flowpath`: conducto y volumen del escape.
-- `engine_envelope`: envolvente reservada para el motor y accesorios.
-- `spinner` y `propeller_disk`.
-- `wing_reference`: sección NACA 230 interpolada en la estación del motor.
-- `gear_bay_envelope`: reserva para el tren principal.
-- `forward_engine_mount`, `aft_engine_mount` y `firewall`.
-- `nacelle_integration_assembly.step`: conjunto completo.
-
-Los STEP declaran explícitamente metros. Como STL no almacena unidades, los STL se escalan a milímetros para que un visor convencional los importe a tamaño real. Solo se exportan STL para superficies que tiene sentido mallar o visualizar; los volúmenes de referencia no se presentan como piezas fabricables.
+La toma de aire, los escapes y los capós están bloqueados deliberadamente. Agregarlos antes de aprobar el OML volvería a producir una geometría parcheada. El flujo acordado es: ejecutar, revisar capturas, corregir el cuerpo y recién entonces habilitar Stage 2.
 
 ## Uso
 
-Requiere Python 3.11 o superior.
+1. Clonar el repositorio en Windows.
+2. Tener SOLIDWORKS 2021 instalado.
+3. Ejecutar `CONFIGURAR_RUTA_ALA.bat` si el ensamblaje no está en:
 
-```bash
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# Linux/macOS
-source .venv/bin/activate
-
-python -m pip install --upgrade pip
-pip install -r requirements-dev.txt
-
-make validate
-make drawings
-make cad
-make test
+```text
+%USERPROFILE%\Desktop\AlaSW\ALA_COMPLETA_MECANISMOS.SLDASM
 ```
 
-Sin `make`:
+4. Para actualizar el proyecto:
 
-```bash
-python src/validate_geometry.py
-python src/generate_drawings.py
-python src/nacelle_model.py
-pytest -q
+```text
+01_ACTUALIZAR.bat
 ```
 
-Los parámetros se editan únicamente en [`config/nacelle.yaml`](config/nacelle.yaml). No conviene corregir a mano el STEP y después perder la trazabilidad: se modifica el YAML y se regenera.
+5. Para compilar y generar la revisión:
 
-## Criterio de diseño implementado
+```text
+02_EJECUTAR_REVISION.bat
+```
 
-La geometría sigue una arquitectura de nacela real de turbohélice regional:
+6. Para abrir el ensamblaje generado:
 
-1. Reductor y plano de hélice delante del borde de ataque local.
-2. Motor contenido en una envolvente separada de la piel exterior.
-3. Toma inferior tipo *chin inlet*, con labio redondeado, garganta y difusor curvo.
-4. Mamparo cortafuego detrás del motor.
-5. Escape lateral exterior, separado de la toma y del volumen del tren.
-6. Carenado posterior prolongado más allá del borde de fuga para alojar el tren y cerrar el flujo.
-7. Paneles y módulos independientes para mantenimiento.
+```text
+03_ABRIR_ULTIMO_RESULTADO.bat
+```
 
-La forma exterior no copia a escala una ATR: usa la ATR 42/72 como referencia de arquitectura de integración, pero se ajusta a la cuerda, espesor, estación del motor y dispositivos del ala del TFG.
+Los resultados se guardan en:
 
-## Controles automáticos
+```text
+generated\A0\
+```
 
-Antes de crear CAD se bloquea la generación cuando falla alguno de estos controles:
+## Archivos generados
 
-- estación transversal razonable del motor;
-- despeje radial entre motor y piel;
-- separación radial hélice–nacela;
-- coherencia entre el área declarada y el labio de toma;
-- relación de áreas del conducto;
-- separación entre motor, mamparo cortafuego y volumen del tren;
-- extensión de la nacela hasta después del borde de fuga local.
+```text
+NACELA_DERECHA_A0_STAGE1.SLDPRT
+ALA_REVIEW_NACELA_DER_A0.SLDASM
+NACELA_DERECHA_A0_ISO.bmp
+ALA_REVIEW_NACELA_DER_A0_ISO.bmp
+VALIDACION_STAGE1_A0.txt
+```
 
-El CI de GitHub ejecuta validación, pruebas, generación de dibujos y exportación STEP/STL. Los archivos CAD generados se publican como artefacto de cada ejecución; no se versionan binarios pesados en el repositorio.
+## Parámetros
 
-## Documentación
+La geometría se modifica en `config/defaults.ini`. Para cambios locales de ruta usar `config/local.ini`, que no se versiona.
 
-- [Base de diseño y trazabilidad](docs/design_basis.md)
-- [Sistema de coordenadas](docs/coordinate_system.md)
-- [Plan de verificación pendiente](docs/verification_plan.md)
+La revisión A0 conserva las dimensiones calculadas para la envolvente del motor:
 
-## Fuentes principales
+- longitud: 2.556 m;
+- ancho máximo: 0.920 m;
+- altura máxima: 1.340 m;
+- estación transversal: y = +4.300 m;
+- eje del motor: z = -0.880 m;
+- extremo delantero: x = -1.739330 m;
+- extremo trasero: x = +0.816670 m.
 
-- EASA, **TCDS EASA.A.084 — ATR 42/ATR 72**, Issue 14, 23-02-2026.
-- Pratt & Whitney, **PW127XT Engine Series**.
-- Pratt & Whitney, **PW100/150 Engines**, datos dimensionales públicos de la familia PW127.
-- Roskam, *Airplane Design*, Part II y Part III, integración del sistema propulsor.
-- Informes Técnicos del TFG THR-001/26, THR-002/26 y THR-003/26.
+La forma no se obtiene de una extrusión lateral. Se define mediante diez secciones asimétricas, con panza más llena, techo contenido y cola ascendente.
 
-## Advertencia de ingeniería
+## Compilación
 
-Una nacela de vuelo no se valida porque “se vea como una de verdad”. El OML actual es una hipótesis geométrica útil para el Capítulo 4 y para preparar CAD/CFD. No debe congelarse para fabricación hasta cerrar, como mínimo, los datos OEM, distorsión y recuperación de presión de la toma, mapa de velocidades internas, temperaturas del escape, cargas de motor/hélice, bird strike, fire zone, drenajes, accesos y retracción real del tren.
+`BUILD.bat` busca:
+
+- `csc.exe` de .NET Framework 4.x;
+- `SolidWorks.Interop.sldworks.dll` en la instalación de SOLIDWORKS, en `lib\` o en la carpeta anterior `AlaSW`.
+
+No se versiona la DLL de SOLIDWORKS.
+
+## Qué enviar para la siguiente iteración
+
+Enviar tres capturas del ensamblaje:
+
+- lateral estricta;
+- frontal estricta;
+- isométrica desde delante y abajo.
+
+No alcanza con una sola vista: una forma puede verse bien en isométrica y seguir siendo demasiado ancha, corta o alta.
+
+## Límite del modelo
+
+Este repositorio automatiza un diseño preliminar nativo de SOLIDWORKS. No es una instalación certificada ni reemplaza el installation drawing del PW127XT-M, análisis CFD, cargas, fuego, vibración, bird strike o mantenimiento.

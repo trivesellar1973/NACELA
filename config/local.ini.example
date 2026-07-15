@@ -1,0 +1,3 @@
+# Copiar como local.ini o ejecutar CONFIGURAR_RUTA_ALA.bat.
+# Este archivo no se versiona y no se pisa al actualizar.
+source_assembly=C:\Users\User\Desktop\AlaSW\ALA_COMPLETA_MECANISMOS.SLDASM
