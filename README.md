@@ -1,48 +1,93 @@
 # NACELA — generador nativo para SOLIDWORKS 2021
 
-Este repositorio reemplaza el prototipo de FreeCAD/CadQuery. El entregable es un programa **C#/.NET Framework** que controla SOLIDWORKS mediante su API COM y crea operaciones nativas editables: croquis 3D, splines cerradas, lofts sólidos, curvas guía, fairing y ensamblaje de revisión.
+Este repositorio contiene un programa **C#/.NET Framework** que controla SOLIDWORKS mediante su API COM y crea la nacela con operaciones nativas editables.
 
 No usa STEP, IGES, STL ni cuerpos importados.
 
+## Qué archivos son de entrada
+
+El único modelo previo necesario para revisar la integración es el conjunto del ala:
+
+```text
+ALA_COMPLETA_MECANISMOS.SLDASM
+ALA_FIJA_DERECHA.SLDPRT
+ALA_FIJA_IZQUIERDA.SLDPRT
+ALERON_DERECHO.SLDPRT
+ALERON_IZQUIERDO.SLDPRT
+FLAP_DERECHO.SLDPRT
+SPOILER_DER_EXTERIOR.SLDPRT
+SPOILER_DER_INTERIOR.SLDPRT
+SPOILER_IZQ_EXTERIOR.SLDPRT
+SPOILER_IZQ_INTERIOR.SLDPRT
+```
+
+**No hace falta ninguna nacela previa.** El programa crea una pieza nueva vacía y genera desde cero sus croquis, secciones, curvas guía, loft, fairing y referencias.
+
+Si el ala no está disponible, la pieza de nacela se genera igualmente. Solamente se omite el ensamblaje de revisión.
+
 ## Estado actual
 
-La revisión `A0` genera solamente el **Stage 1**:
+La revisión `A0` genera el Stage 1:
 
 - cuerpo exterior OML de la nacela derecha;
 - diez secciones cerradas y asimétricas;
 - cuatro curvas guía continuas;
 - loft sólido nativo;
-- fairing superior corto ajustado al intradós medido;
+- fairing superior corto;
 - eje de motor de referencia;
 - pieza independiente `.SLDPRT`;
-- copia del ensamblaje del ala con la nacela insertada y fijada;
+- copia opcional del ensamblaje del ala con la nacela insertada;
 - imagen BMP y reporte geométrico.
 
-La toma de aire, los escapes y los capós están bloqueados deliberadamente. Agregarlos antes de aprobar el OML volvería a producir una geometría parcheada. El flujo acordado es: ejecutar, revisar capturas, corregir el cuerpo y recién entonces habilitar Stage 2.
+La toma, los escapes y los capós se incorporan después de aprobar la forma exterior.
 
-## Uso
+## Instalación del ala desde el ZIP
 
-1. Clonar el repositorio en Windows.
-2. Tener SOLIDWORKS 2021 instalado.
-3. Ejecutar `CONFIGURAR_RUTA_ALA.bat` si el ensamblaje no está en:
+Descargar el paquete `AlaSW*.zip` y dejarlo en una de estas ubicaciones:
 
 ```text
-%USERPROFILE%\Desktop\AlaSW\ALA_COMPLETA_MECANISMOS.SLDASM
+carpeta del repositorio
+%USERPROFILE%\Downloads
+%USERPROFILE%\Desktop
 ```
 
-4. Para actualizar el proyecto:
+Ejecutar:
+
+```text
+00_PREPARAR_ALA.bat
+```
+
+El BAT busca dentro del ZIP `ALA_COMPLETA_MECANISMOS.SLDASM`, copia el conjunto completo a:
+
+```text
+%USERPROFILE%\Desktop\AlaSW
+```
+
+y escribe la ruta en `config\local.ini`.
+
+No instala ni copia nacelas.
+
+## Flujo de uso
+
+1. Actualizar el proyecto:
 
 ```text
 01_ACTUALIZAR.bat
 ```
 
-5. Para compilar y generar la revisión:
+2. Preparar el ala, solo la primera vez:
+
+```text
+00_PREPARAR_ALA.bat
+```
+
+3. Compilar y ejecutar:
 
 ```text
 02_EJECUTAR_REVISION.bat
 ```
 
-6. Para abrir el ensamblaje generado:
+4. Abrir el último ensamblaje generado, si el ala estaba instalada:
 
 ```text
 03_ABRIR_ULTIMO_RESULTADO.bat
@@ -58,17 +103,28 @@ generated\A0\
 
 ```text
 NACELA_DERECHA_A0_STAGE1.SLDPRT
-ALA_REVIEW_NACELA_DER_A0.SLDASM
 NACELA_DERECHA_A0_ISO.bmp
-ALA_REVIEW_NACELA_DER_A0_ISO.bmp
 VALIDACION_STAGE1_A0.txt
 ```
 
-## Parámetros
+Cuando el ala está disponible también se generan:
 
-La geometría se modifica en `config/defaults.ini`. Para cambios locales de ruta usar `config/local.ini`, que no se versiona.
+```text
+ALA_REVIEW_NACELA_DER_A0.SLDASM
+ALA_REVIEW_NACELA_DER_A0_ISO.bmp
+```
 
-La revisión A0 conserva las dimensiones calculadas para la envolvente del motor:
+## Corrección del error de ruta
+
+La versión actual ya no pasa al ejecutable la ruta del repositorio terminada en `\`. Esa forma podía dejar una comilla residual y provocar:
+
+```text
+System.ArgumentException: Caracteres no válidos en la ruta de acceso
+```
+
+El ejecutable localiza ahora la raíz del repositorio mediante `config\defaults.ini` y maneja cualquier error dentro del log.
+
+## Parámetros geométricos A0
 
 - longitud: 2.556 m;
 - ancho máximo: 0.920 m;
@@ -85,20 +141,18 @@ La forma no se obtiene de una extrusión lateral. Se define mediante diez seccio
 `BUILD.bat` busca:
 
 - `csc.exe` de .NET Framework 4.x;
-- `SolidWorks.Interop.sldworks.dll` en la instalación de SOLIDWORKS, en `lib\` o en la carpeta anterior `AlaSW`.
+- `SolidWorks.Interop.sldworks.dll` en la instalación de SOLIDWORKS o en `lib\`.
 
 No se versiona la DLL de SOLIDWORKS.
 
 ## Qué enviar para la siguiente iteración
 
-Enviar tres capturas del ensamblaje:
+Enviar:
 
-- lateral estricta;
-- frontal estricta;
-- isométrica desde delante y abajo.
+- vista lateral estricta;
+- vista frontal estricta;
+- vista superior;
+- isométrica desde delante y abajo;
+- `ultimo_ejecucion.log` si aparece un error.
 
-No alcanza con una sola vista: una forma puede verse bien en isométrica y seguir siendo demasiado ancha, corta o alta.
-
-## Límite del modelo
-
-Este repositorio automatiza un diseño preliminar nativo de SOLIDWORKS. No es una instalación certificada ni reemplaza el installation drawing del PW127XT-M, análisis CFD, cargas, fuego, vibración, bird strike o mantenimiento.
+Este modelo es una integración preliminar, no una definición certificada del PW127XT-M.
