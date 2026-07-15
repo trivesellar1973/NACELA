@@ -1,0 +1,56 @@
+name: Validate and build nacelle CAD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: python -m ruff check src tests
+
+      - name: Validate geometry
+        run: python src/validate_geometry.py
+
+      - name: Generate SVG drawings
+        run: python src/generate_drawings.py
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Build STEP and STL outputs
+        run: python src/nacelle_model.py
+
+      - name: Upload CAD artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nacelle-cad-${{ github.sha }}
+          path: |
+            outputs/cad/
+            outputs/derived_dimensions.json
+            docs/generated/*.svg
+          if-no-files-found: error
+          retention-days: 30
