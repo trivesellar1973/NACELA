@@ -1,153 +1,102 @@
 # NACELA — generador nativo para SOLIDWORKS 2021
 
-Este repositorio contiene un programa **C#/.NET Framework** que controla SOLIDWORKS mediante su API COM y crea la nacela con operaciones nativas editables.
+Este repositorio contiene un programa C#/.NET Framework que controla SOLIDWORKS mediante la API COM y crea una nacela turbohélice mediante operaciones nativas editables.
 
-No usa STEP, IGES, STL ni cuerpos importados.
+No usa FreeCAD, CadQuery, STEP, IGES, STL ni cuerpos importados.
 
-## Qué archivos son de entrada
+## Revisión A1
 
-El único modelo previo necesario para revisar la integración es el conjunto del ala:
+La A1 corrige el defecto principal de A0: la pieza ya no contiene coordenadas globales del ala. La nacela se modela en un sistema local con origen en el plano de hélice y después se inserta en el ensamblaje mediante una transformación explícita:
 
-```text
-ALA_COMPLETA_MECANISMOS.SLDASM
-ALA_FIJA_DERECHA.SLDPRT
-ALA_FIJA_IZQUIERDA.SLDPRT
-ALERON_DERECHO.SLDPRT
-ALERON_IZQUIERDO.SLDPRT
-FLAP_DERECHO.SLDPRT
-SPOILER_DER_EXTERIOR.SLDPRT
-SPOILER_DER_INTERIOR.SLDPRT
-SPOILER_IZQ_EXTERIOR.SLDPRT
-SPOILER_IZQ_INTERIOR.SLDPRT
-```
+- X global de montaje: borde de ataque local menos 1,600 m;
+- Y global: +4,300 m;
+- Z global del eje: -0,550 m.
 
-**No hace falta ninguna nacela previa.** El programa crea una pieza nueva vacía y genera desde cero sus croquis, secciones, curvas guía, loft, fairing y referencias.
+Con esto deja de aparecer en el centro del ala.
 
-Si el ala no está disponible, la pieza de nacela se genera igualmente. Solamente se omite el ensamblaje de revisión.
+### Stage 1 — OML y montaje
 
-## Estado actual
-
-La revisión `A0` genera el Stage 1:
-
-- cuerpo exterior OML de la nacela derecha;
-- diez secciones cerradas y asimétricas;
-- cuatro curvas guía continuas;
+- 10 secciones cerradas asimétricas;
+- 4 curvas guía continuas;
 - loft sólido nativo;
-- fairing superior corto;
-- eje de motor de referencia;
-- pieza independiente `.SLDPRT`;
-- copia opcional del ensamblaje del ala con la nacela insertada;
-- imagen BMP y reporte geométrico.
+- morro, boss de caja reductora y abertura central;
+- envolvente interna oculta del PW127XT-M;
+- fairing superior corto situado alrededor del borde de ataque real;
+- pieza definida en coordenadas locales;
+- ensamblaje de revisión con transformación global explícita.
 
-La toma, los escapes y los capós se incorporan después de aprobar la forma exterior.
+### Stage 2 — sistemas externos
 
-## Instalación del ala desde el ZIP
+- toma principal inferior tipo chin intake;
+- área elíptica nominal de 0,1848 m²;
+- conducto interno por loft hacia una interfaz de 0,420 × 0,260 m;
+- dos escapes laterales compactos tipo D;
+- dos entradas NACA pequeñas para ventilación o accesorios;
+- las NACA no alimentan el motor principal;
+- el diámetro equivalente preliminar del escape se conserva solo como dato pendiente de revisión.
 
-Descargar el paquete `AlaSW*.zip` y dejarlo en una de estas ubicaciones:
+Los capós practicables, bisagras, cierres, paneles de servicio y heat shields corresponden a Stage 3. No se agregan hasta aprobar la forma y la posición de A1.
 
-```text
-carpeta del repositorio
-%USERPROFILE%\Downloads
-%USERPROFILE%\Desktop
-```
+## Archivos de entrada
 
-Ejecutar:
+El único modelo previo necesario para revisar la integración es el conjunto del ala. No hace falta ninguna nacela previa. El programa crea una pieza nueva y genera desde cero sus croquis, secciones, curvas guía, lofts, cortes y referencias.
 
-```text
-00_PREPARAR_ALA.bat
-```
+Si el ala no está disponible, las piezas de nacela se generan igualmente. Solamente se omite el ensamblaje de revisión.
 
-El BAT busca dentro del ZIP `ALA_COMPLETA_MECANISMOS.SLDASM`, copia el conjunto completo a:
+## Parámetros adoptados
 
-```text
-%USERPROFILE%\Desktop\AlaSW
-```
+Los parámetros editables están en `config/defaults.ini`:
 
-y escribe la ruta en `config\local.ini`.
+- motor: PW127XT-M;
+- longitud motor: 2,130 m;
+- ancho motor: 0,720 m;
+- altura motor: 0,840 m;
+- masa seca de referencia: 494,7 kg;
+- longitud nacela: 2,750 m;
+- ancho máximo nacela: 0,900 m;
+- altura máxima nacela: 1,100 m;
+- posición transversal: 4,300 m;
+- plano de hélice: 1,600 m delante del borde de ataque local;
+- eje: 0,550 m bajo el plano de cuerda;
+- cuerda local: 2,958955 m;
+- diámetro preliminar de hélice: 3,600 m;
+- régimen: 1200 rpm.
 
-No instala ni copia nacelas.
+## Ejecución normal
 
-## Flujo de uso
+1. `01_ACTUALIZAR.bat`
+2. `00_PREPARAR_ALA.bat`, únicamente cuando el ala todavía no está instalada.
+3. `02_EJECUTAR_REVISION.bat`
+4. `03_ABRIR_ULTIMO_RESULTADO.bat`
 
-1. Actualizar el proyecto:
+`02_EJECUTAR_REVISION.bat` construye Stage 1, Stage 2 y el ensamblaje de revisión.
 
-```text
-01_ACTUALIZAR.bat
-```
-
-2. Preparar el ala, solo la primera vez:
-
-```text
-00_PREPARAR_ALA.bat
-```
-
-3. Compilar y ejecutar:
-
-```text
-02_EJECUTAR_REVISION.bat
-```
-
-4. Abrir el último ensamblaje generado, si el ala estaba instalada:
+Para revisar solamente la piel exterior antes de los conductos:
 
 ```text
-03_ABRIR_ULTIMO_RESULTADO.bat
+04_EJECUTAR_SOLO_OML.bat
 ```
 
-Los resultados se guardan en:
+## Resultados
 
-```text
-generated\A0\
-```
+La revisión se guarda en `generated/A1/`:
 
-## Archivos generados
+- `NACELA_DERECHA_A1_STAGE1_OML.SLDPRT`
+- `NACELA_DERECHA_A1_STAGE2_SISTEMAS.SLDPRT`
+- `ALA_REVIEW_NACELA_DER_A1.SLDASM`
+- vistas lateral, frontal, planta e isométrica de Stage 1 y Stage 2;
+- `VALIDACION_STAGE1_A1.txt`
+- `VALIDACION_STAGE2_A1.txt`
 
-```text
-NACELA_DERECHA_A0_STAGE1.SLDPRT
-NACELA_DERECHA_A0_ISO.bmp
-VALIDACION_STAGE1_A0.txt
-```
+## Referencias de criterio
 
-Cuando el ala está disponible también se generan:
-
-```text
-ALA_REVIEW_NACELA_DER_A0.SLDASM
-ALA_REVIEW_NACELA_DER_A0_ISO.bmp
-```
-
-## Corrección del error de ruta
-
-La versión actual ya no pasa al ejecutable la ruta del repositorio terminada en `\`. Esa forma podía dejar una comilla residual y provocar:
-
-```text
-System.ArgumentException: Caracteres no válidos en la ruta de acceso
-```
-
-El ejecutable localiza ahora la raíz del repositorio mediante `config\defaults.ini` y maneja cualquier error dentro del log.
-
-## Parámetros geométricos A0
-
-- longitud: 2.556 m;
-- ancho máximo: 0.920 m;
-- altura máxima: 1.340 m;
-- estación transversal: y = +4.300 m;
-- eje del motor: z = -0.880 m;
-- extremo delantero: x = -1.739330 m;
-- extremo trasero: x = +0.816670 m.
-
-La forma no se obtiene de una extrusión lateral. Se define mediante diez secciones asimétricas, con panza más llena, techo contenido y cola ascendente.
+La trazabilidad y las decisiones de diseño están en `docs/CRITERIO_DISENO_A1.md`.
 
 ## Compilación
 
-`BUILD.bat` busca:
-
-- `csc.exe` de .NET Framework 4.x;
-- `SolidWorks.Interop.sldworks.dll` en la instalación de SOLIDWORKS o en `lib\`.
-
-No se versiona la DLL de SOLIDWORKS.
+`BUILD.bat` busca `csc.exe` de .NET Framework 4.x y la DLL de interoperabilidad de SOLIDWORKS. Después de compilar, copia la DLL junto al ejecutable en `bin/`.
 
 ## Qué enviar para la siguiente iteración
-
-Enviar:
 
 - vista lateral estricta;
 - vista frontal estricta;
@@ -155,4 +104,6 @@ Enviar:
 - isométrica desde delante y abajo;
 - `ultimo_ejecucion.log` si aparece un error.
 
-Este modelo es una integración preliminar, no una definición certificada del PW127XT-M.
+## Alcance
+
+Es un modelo preliminar de integración y no un installation drawing certificado. La geometría OEM interna, cargas, fuego, vibración, bird strike, distorsión de entrada, pérdidas de conducto y temperatura de escape requieren documentación del fabricante y análisis específicos.
