@@ -27,10 +27,10 @@ namespace NacelleSolidWorks
             AddMainChinIntake(doc);
             ValidateSingleSolid(doc, "Stage 2 despues de toma principal");
 
-            AddSideExhaust(doc, +1, "EXTERIOR");
+            AddRecessedSideExhaust(doc, +1, "EXTERIOR");
             ValidateSingleSolid(doc, "Stage 2 despues de escape exterior");
 
-            AddSideExhaust(doc, -1, "INTERIOR");
+            AddRecessedSideExhaust(doc, -1, "INTERIOR");
             ValidateSingleSolid(doc, "Stage 2 despues de escape interior");
 
             AddAccessoryNacaDuct(doc, +1, "EXTERIOR");
@@ -49,7 +49,7 @@ namespace NacelleSolidWorks
 
             string reportPath = Path.Combine(stage1.OutputDirectory, "VALIDACION_STAGE2_" + cfg.Revision + ".txt");
             File.WriteAllText(reportPath, BuildReport(doc));
-            log("Stage 2 con toma, escapes y NACA creado: " + partPath);
+            log("Stage 2 A2 con toma, escapes enrasados y NACA creado: " + partPath);
 
             return new BuildResult
             {
@@ -62,13 +62,31 @@ namespace NacelleSolidWorks
 
         private void AddMainChinIntake(IModelDoc2 doc)
         {
+            // Primero se crea un bolsillo exterior poco profundo. Al cortarlo antes que el
+            // ducto queda un contorno ancho y redondeado, semejante al labio de la referencia.
+            Feature pocket0 = SwGeometry.CreateEllipseSectionX(
+                doc, cfg.IntakeXOuter - 0.070, 0.0, cfg.IntakeZOuter - 0.005,
+                cfg.IntakeLipPocketWidth, cfg.IntakeLipPocketHeight,
+                "07_TOMA_CHIN_BOLSILLO_EXTERIOR");
+            Feature pocket1 = SwGeometry.CreateEllipseSectionX(
+                doc, cfg.IntakeXCapture + 0.020, 0.0, cfg.IntakeZOuter,
+                cfg.IntakeLipPocketWidth * 0.94, cfg.IntakeLipPocketHeight * 0.90,
+                "07_TOMA_CHIN_BOLSILLO_INTERIOR");
+            Feature pocketToolFeature = SwGeometry.LoftTool(doc, new[] { pocket0, pocket1 }, "07_HERRAMIENTA_BOLSILLO_LABIO_CHIN");
+            Body2 mainPocket = SwGeometry.LargestSolidBody(doc);
+            Body2 pocketTool = SwGeometry.BodyOf(pocketToolFeature);
+            SwGeometry.SubtractBodies(doc, mainPocket, pocketTool, "07_BOLSILLO_LABIO_TOMA_CHIN");
+            SwGeometry.HideFeatureSketch(doc, pocket0);
+            SwGeometry.HideFeatureSketch(doc, pocket1);
+
+            // Ducto real: boca, captura y transicion al interfaz del motor.
             Feature outside = SwGeometry.CreateEllipseSectionX(
-                doc, cfg.IntakeXOuter - 0.120, 0.0, cfg.IntakeZOuter - 0.020,
-                cfg.IntakeWidth * 1.06, cfg.IntakeHeight * 1.06,
-                "07_TOMA_CHIN_PERFIL_EXTERIOR");
+                doc, cfg.IntakeXOuter - 0.015, 0.0, cfg.IntakeZOuter,
+                cfg.IntakeWidth * 1.015, cfg.IntakeHeight * 1.015,
+                "07_TOMA_CHIN_BOCA");
 
             Feature capture = SwGeometry.CreateEllipseSectionX(
-                doc, cfg.IntakeXCapture, 0.0, cfg.IntakeZOuter,
+                doc, cfg.IntakeXCapture, 0.0, cfg.IntakeZOuter + 0.010,
                 cfg.IntakeWidth, cfg.IntakeHeight,
                 "07_TOMA_CHIN_CAPTURA");
 
@@ -86,28 +104,47 @@ namespace NacelleSolidWorks
             SwGeometry.HideFeatureSketch(doc, capture);
             SwGeometry.HideFeatureSketch(doc, engine);
 
-            bool fillet = SwGeometry.TryFilletNear(
-                doc, 0.025, cfg.IntakeXCapture - 0.15, cfg.IntakeWidth * 0.45, cfg.IntakeZOuter,
-                "07_LABIO_TOMA_CHIN_R025");
-            log(fillet ? "Labio de toma principal creado." : "Aviso: labio de toma sin filete; el corte queda nativo y editable.");
+            bool leftFillet = SwGeometry.TryFilletNear(
+                doc, 0.026, cfg.IntakeXCapture - 0.120, cfg.IntakeWidth * 0.47, cfg.IntakeZOuter,
+                "07_LABIO_TOMA_CHIN_IZQ_R026");
+            bool rightFillet = SwGeometry.TryFilletNear(
+                doc, 0.026, cfg.IntakeXCapture - 0.120, -cfg.IntakeWidth * 0.47, cfg.IntakeZOuter,
+                "07_LABIO_TOMA_CHIN_DER_R026");
+            log(leftFillet || rightFillet ? "Labio de toma principal redondeado." : "Aviso: filetes de toma omitidos; la abertura y el ducto siguen siendo nativos.");
         }
 
-        private void AddSideExhaust(IModelDoc2 doc, int sign, string label)
+        private void AddRecessedSideExhaust(IModelDoc2 doc, int sign, string label)
         {
-            double innerY = sign * cfg.ExhaustInnerY;
             double outerY = sign * cfg.ExhaustOuterY;
-            double outerZ = cfg.ExhaustZ - 0.020;
+            double recessInnerY = sign * cfg.ExhaustRecessInnerY;
+            double innerY = sign * cfg.ExhaustInnerY;
 
+            // Bolsillo termico exterior: crea el marco ancho y enrasado visible en la
+            // referencia verde sin agregar un pod ni un tubo circular sobresaliente.
+            Feature bezelOuter = SwGeometry.CreateRoundedSideSection(
+                doc, outerY, cfg.ExhaustX, cfg.ExhaustZ,
+                cfg.ExhaustBezelLength, cfg.ExhaustBezelHeight,
+                "09_HEAT_SHIELD_" + label + "_EXTERIOR");
+            Feature bezelInner = SwGeometry.CreateRoundedSideSection(
+                doc, recessInnerY, cfg.ExhaustX, cfg.ExhaustZ,
+                cfg.ExhaustBezelLength * 0.96, cfg.ExhaustBezelHeight * 0.94,
+                "09_HEAT_SHIELD_" + label + "_INTERIOR");
+            Feature bezelToolFeature = SwGeometry.LoftTool(doc, new[] { bezelOuter, bezelInner }, "09_HERRAMIENTA_RECESO_TERMICO_" + label);
+            Body2 mainBezel = SwGeometry.LargestSolidBody(doc);
+            Body2 bezelTool = SwGeometry.BodyOf(bezelToolFeature);
+            SwGeometry.SubtractBodies(doc, mainBezel, bezelTool, "09_RECESO_HEAT_SHIELD_" + label);
+            SwGeometry.HideFeatureSketch(doc, bezelOuter);
+            SwGeometry.HideFeatureSketch(doc, bezelInner);
+
+            // Conducto interno y boca D-shaped compacta.
             Feature inner = SwGeometry.CreateRoundedSideSection(
-                doc, innerY, cfg.ExhaustX - 0.050, cfg.ExhaustZ + 0.010,
-                cfg.ExhaustLength * 0.88, cfg.ExhaustHeight * 0.82,
+                doc, innerY, cfg.ExhaustX - 0.045, cfg.ExhaustZ + 0.010,
+                cfg.ExhaustLength * 0.82, cfg.ExhaustHeight * 0.76,
                 "09_ESCAPE_" + label + "_INTERFAZ");
-
             Feature outer = SwGeometry.CreateRoundedSideSection(
-                doc, outerY, cfg.ExhaustX, outerZ,
+                doc, outerY + sign * 0.015, cfg.ExhaustX, cfg.ExhaustZ,
                 cfg.ExhaustLength, cfg.ExhaustHeight,
                 "09_ESCAPE_" + label + "_BOCA");
-
             Feature toolFeature = SwGeometry.LoftTool(doc, new[] { inner, outer }, "09_HERRAMIENTA_ESCAPE_" + label);
             Body2 main = SwGeometry.LargestSolidBody(doc);
             Body2 tool = SwGeometry.BodyOf(toolFeature);
@@ -115,10 +152,10 @@ namespace NacelleSolidWorks
             SwGeometry.HideFeatureSketch(doc, inner);
             SwGeometry.HideFeatureSketch(doc, outer);
 
-            bool fillet = SwGeometry.TryFilletNear(
-                doc, 0.015, cfg.ExhaustX, sign * (cfg.ExhaustOuterY - 0.05), outerZ,
-                "09_LABIO_ESCAPE_" + label + "_R015");
-            log(fillet ? "Labio escape " + label + " creado." : "Aviso: filete escape " + label + " omitido.");
+            bool topFillet = SwGeometry.TryFilletNear(
+                doc, 0.014, cfg.ExhaustX, sign * (cfg.ExhaustOuterY - 0.025), cfg.ExhaustZ + cfg.ExhaustHeight * 0.45,
+                "09_LABIO_ESCAPE_" + label + "_R014");
+            log(topFillet ? "Escape " + label + " terminado con labio redondeado." : "Aviso: filete escape " + label + " omitido.");
         }
 
         private void AddAccessoryNacaDuct(IModelDoc2 doc, int sign, string label)
@@ -129,9 +166,9 @@ namespace NacelleSolidWorks
                 "10_NACA_" + label + "_BOCA_FLUSH");
 
             Feature inner = SwGeometry.CreateNacaSideProfile(
-                doc, sign * cfg.NacaInnerY, cfg.NacaX + 0.055, cfg.NacaZ - 0.015,
-                cfg.NacaLength, cfg.NacaHeight, 0.68,
-                "10_NACA_" + label + "_FONDO");
+                doc, sign * cfg.NacaInnerY, cfg.NacaX + 0.055, cfg.NacaZ - 0.018,
+                cfg.NacaLength, cfg.NacaHeight, 0.64,
+                "10_NACA_" + label + "_RAMPA_INTERIOR");
 
             Feature toolFeature = SwGeometry.LoftTool(doc, new[] { outer, inner }, "10_HERRAMIENTA_NACA_" + label);
             Body2 main = SwGeometry.LargestSolidBody(doc);
@@ -145,18 +182,18 @@ namespace NacelleSolidWorks
         {
             double intakeArea = Math.PI * cfg.IntakeWidth * cfg.IntakeHeight / 4.0;
             return
-                "NACELA SOLIDWORKS - VALIDACION STAGE 2 SISTEMAS EXTERNOS\r\n" +
+                "NACELA SOLIDWORKS - VALIDACION STAGE 2 SISTEMAS EXTERNOS A2\r\n" +
                 "Revision=" + cfg.Revision + "\r\n" +
-                "Toma_principal=chin intake inferior con ducto loft interno\r\n" +
+                "Toma_principal=chin intake inferior con bolsillo de labio y ducto loft\r\n" +
                 "Area_toma_requerida=" + F(cfg.IntakeRequiredArea) + " m2\r\n" +
                 "Area_toma_eliptica=" + F(intakeArea) + " m2\r\n" +
-                "Escapes=2 laterales D-shaped compactos\r\n" +
+                "Escapes=2 laterales altos D-shaped en bolsillos termicos\r\n" +
                 "Escape_visible_LxH=" + F(cfg.ExhaustLength) + " x " + F(cfg.ExhaustHeight) + " m\r\n" +
                 "Diametro_equivalente_previo_por_salida=" + F(cfg.ExhaustEquivalentEach) + " m PENDIENTE_DE_REVISION\r\n" +
-                "Tomas_NACA=2 pequenas para accesorios y ventilacion; no son la toma principal\r\n" +
+                "Tomas_NACA=2 pequenas para accesorios; no alimentan el motor\r\n" +
                 "Solidos=" + SwGeometry.SolidBodyCount(doc) + "\r\n" +
                 "Superficies=" + SwGeometry.SurfaceBodyCount(doc) + "\r\n" +
-                "Estado=LISTO_PARA_REVISION_VISUAL_Y_STAGE3_CAPOS\r\n";
+                "Estado=LISTO_PARA_STAGE3_CAPOS_Y_PANELES\r\n";
         }
 
         private static void ValidateSingleSolid(IModelDoc2 doc, string stage)
