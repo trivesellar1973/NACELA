@@ -44,15 +44,19 @@ namespace NacelleSolidWorks
                 "B2_01_ENVOLVENTE_MOTOR_REFERENCIA");
             SwGeometry.HideFeatureSketch(doc, envelope);
 
-            // La pieza verde se construye deliberadamente con tres operaciones simples:
-            // cuerpo central, boss circular superior y toma rectangular redondeada inferior.
-            // Cada operacion genera un solido independiente y la union se hace despues con
-            // Combine/Add. No se usan guias, filetes automaticos ni un unico loft gigante.
-            BuildCentralGreenBody(doc);
-            ValidateSingleSolid(doc, "B2 cuerpo central verde");
-
+            // Orden robusto para SOLIDWORKS:
+            // 1) la nariz se crea sola, sin intersectar ningun cuerpo existente;
+            // 2) el cuerpo central se lofta despues y se fusiona directamente con la nariz;
+            // 3) la toma inferior se lofta al final y se fusiona directamente con la panza.
+            //
+            // La version anterior creaba nariz y toma como cuerpos independientes que ya
+            // intersectaban el cuerpo central. Esa operacion multibody podia cerrar el proceso
+            // de SOLIDWORKS y producir RPC_E_DISCONNECTED antes del Combine/Add.
             BuildCircularSpinnerBoss(doc);
-            ValidateSingleSolid(doc, "B2 cuerpo con boss circular");
+            ValidateSingleSolid(doc, "B2 boss circular inicial");
+
+            BuildCentralGreenBody(doc);
+            ValidateSingleSolid(doc, "B2 boss unido al cuerpo central");
 
             BuildRoundedChinIntake(doc);
             ValidateSingleSolid(doc, "B2 cuerpo con toma inferior");
@@ -72,7 +76,7 @@ namespace NacelleSolidWorks
             string reportPath = Path.Combine(output, "VALIDACION_B2_STAGE1.txt");
             File.WriteAllText(reportPath, BuildReport(doc));
             log("B2 Stage 1 guardado: " + partPath);
-            log("B2: cuerpo verde simple; circulo y toma inferior unidos al cuerpo central mediante lofts separados y Combine/Add.");
+            log("B2: tres lofts simples creados en orden y fusionados directamente; no se usan cuerpos solapados ni Combine/Add.");
 
             return new B2BuildResult
             {
@@ -83,90 +87,55 @@ namespace NacelleSolidWorks
             };
         }
 
-        private void BuildCentralGreenBody(IModelDoc2 doc)
-        {
-            List<Feature> profiles = new List<Feature>();
-            try
-            {
-                // Todas las secciones son elipses verdaderas con la misma costura en +Y.
-                // Esto evita los quiebres y torsiones que aparecian con superelipses,
-                // exponentes variables y cuatro curvas guia simultaneas.
-                foreach (B2OmlSection section in cfg.OmlSections)
-                {
-                    profiles.Add(SwGeometry.CreateEllipseSectionX(
-                        doc, section.X, 0.0, section.ZCenter,
-                        section.Width, section.Height,
-                        "B2_02_CUERPO_CENTRAL_" + section.Name));
-                }
-
-                SwGeometry.SimpleMergedLoft(doc, profiles, "B2_03_CUERPO_CENTRAL_VERDE_SIMPLE");
-            }
-            finally
-            {
-                HideAll(doc, profiles);
-            }
-        }
-
         private void BuildCircularSpinnerBoss(IModelDoc2 doc)
         {
             List<Feature> profiles = new List<Feature>();
-            Feature noseLoft = null;
-            try
+            foreach (B2OmlSection section in cfg.NoseSections)
             {
-                foreach (B2OmlSection section in cfg.NoseSections)
-                {
-                    profiles.Add(SwGeometry.CreateEllipseSectionX(
-                        doc, section.X, 0.0, section.ZCenter,
-                        section.Width, section.Height,
-                        "B2_04_NARIZ_CIRCULAR_" + section.Name));
-                }
-
-                // El primer perfil es el circulo frontal. Los siguientes solo hacen la
-                // transicion progresiva hasta penetrar en el cuerpo central.
-                noseLoft = SwGeometry.LoftTool(doc, profiles, "B2_05_LOFT_CIRCULO_A_CUERPO_CENTRAL");
-            }
-            finally
-            {
-                HideAll(doc, profiles);
+                profiles.Add(SwGeometry.CreateEllipseSectionX(
+                    doc, section.X, 0.0, section.ZCenter,
+                    section.Width, section.Height,
+                    "B2_02_NARIZ_CIRCULAR_" + section.Name));
             }
 
-            if (noseLoft == null) throw new InvalidOperationException("No se creo el loft circular frontal");
-            if (SwGeometry.SolidBodyCount(doc) < 2)
-                throw new InvalidOperationException("La nariz circular no se genero como segundo cuerpo solido");
+            log("B2: creando boss circular como primer solido...");
+            SwGeometry.SimpleMergedLoft(doc, profiles, "B2_03_LOFT_CIRCULO_A_ELIPSES");
+            log("B2: boss circular creado.");
+        }
 
-            Body2 mainBody = SwGeometry.LargestSolidBody(doc);
-            Body2 noseBody = SwGeometry.BodyOf(noseLoft);
-            B2BodyOps.AddBodies(doc, mainBody, noseBody, "B2_06_UNION_CIRCULO_CON_CUERPO_CENTRAL");
+        private void BuildCentralGreenBody(IModelDoc2 doc)
+        {
+            List<Feature> profiles = new List<Feature>();
+            foreach (B2OmlSection section in cfg.OmlSections)
+            {
+                // Todas las secciones son elipses verdaderas con la misma costura en +Y.
+                // El primer perfil envuelve parcialmente la zona posterior de la nariz,
+                // por lo que el loft se fusiona en la propia operacion.
+                profiles.Add(SwGeometry.CreateEllipseSectionX(
+                    doc, section.X, 0.0, section.ZCenter,
+                    section.Width, section.Height,
+                    "B2_04_CUERPO_CENTRAL_" + section.Name));
+            }
+
+            log("B2: creando cuerpo central y fusionandolo con la nariz...");
+            SwGeometry.SimpleMergedLoft(doc, profiles, "B2_05_CUERPO_CENTRAL_VERDE_FUSIONADO");
+            log("B2: cuerpo central fusionado.");
         }
 
         private void BuildRoundedChinIntake(IModelDoc2 doc)
         {
             List<Feature> profiles = new List<Feature>();
-            Feature intakeLoft = null;
-            try
+            foreach (B2RoundedSection section in cfg.IntakeSections)
             {
-                foreach (B2RoundedSection section in cfg.IntakeSections)
-                {
-                    profiles.Add(B2Geometry.CreateRoundedRectangleSectionX(
-                        doc, section, "B2_07_TOMA_RECTANGULAR_" + section.Name));
-                }
-
-                // La boca permanece cerrada. El ultimo perfil penetra en la panza para
-                // que la union booleana sea estable y no deje una arista o cuello raro.
-                intakeLoft = SwGeometry.LoftTool(doc, profiles, "B2_08_LOFT_RECTANGULO_REDONDEADO_A_PANZA");
-            }
-            finally
-            {
-                HideAll(doc, profiles);
+                profiles.Add(B2Geometry.CreateRoundedRectangleSectionX(
+                    doc, section, "B2_06_TOMA_RECTANGULAR_" + section.Name));
             }
 
-            if (intakeLoft == null) throw new InvalidOperationException("No se creo el loft de la toma inferior");
-            if (SwGeometry.SolidBodyCount(doc) < 2)
-                throw new InvalidOperationException("La toma inferior no se genero como segundo cuerpo solido");
-
-            Body2 mainBody = SwGeometry.LargestSolidBody(doc);
-            Body2 intakeBody = SwGeometry.BodyOf(intakeLoft);
-            B2BodyOps.AddBodies(doc, mainBody, intakeBody, "B2_09_UNION_TOMA_CON_PANZA");
+            // La boca permanece cerrada. Las secciones centrales penetran en la panza;
+            // por eso el resultado se fusiona en el mismo loft y no requiere otro cuerpo.
+            log("B2: creando toma inferior y fusionandola con la panza...");
+            SwGeometry.SimpleMergedLoft(doc, profiles, "B2_07_TOMA_RECTANGULAR_FUSIONADA");
+            log("B2: toma inferior fusionada.");
         }
 
         private void AddEquations(IModelDoc2 doc)
@@ -194,10 +163,12 @@ namespace NacelleSolidWorks
             return
                 "NACELA B2 - STAGE 1 CUERPO VERDE SIMPLE\r\n" +
                 "Revision=" + cfg.Revision + "\r\n" +
+                "Orden=LOFT_NARIZ_LUEGO_CUERPO_LUEGO_TOMA\r\n" +
                 "Cuerpo_central=LOFT_ELIPTICO_SIN_GUIAS\r\n" +
-                "Nariz=LOFT_SEPARADO_CIRCULO_A_ELIPSES_MAS_COMBINE_ADD\r\n" +
-                "Toma_inferior=LOFT_RECTANGULO_REDONDEADO_MAS_COMBINE_ADD\r\n" +
-                "Union=3_CUERPOS_SOLIDOS_INTERSECTADOS\r\n" +
+                "Nariz=LOFT_CIRCULO_A_ELIPSES_FUSIONADO_EN_OPERACION_SIGUIENTE\r\n" +
+                "Toma_inferior=LOFT_RECTANGULO_REDONDEADO_FUSIONADO_DIRECTO\r\n" +
+                "Combine_Add=NO_EJECUTADO\r\n" +
+                "Cuerpos_solapados=NO_GENERADOS\r\n" +
                 "Aft=INTERFAZ_ANCHA_SIN_BOATTAIL\r\n" +
                 "Guias=NO_EJECUTADAS\r\n" +
                 "Fillets=NO_EJECUTADOS\r\n" +
@@ -212,12 +183,6 @@ namespace NacelleSolidWorks
                 "X_aft_sobre_c=" + F(aftRatio) + "\r\n" +
                 "Solidos=" + SwGeometry.SolidBodyCount(doc) + "\r\n" +
                 "Superficies=" + SwGeometry.SurfaceBodyCount(doc) + "\r\n";
-        }
-
-        private static void HideAll(IModelDoc2 doc, IEnumerable<Feature> features)
-        {
-            foreach (Feature feature in features)
-                if (feature != null) SwGeometry.HideFeatureSketch(doc, feature);
         }
 
         private static void ValidateSingleSolid(IModelDoc2 doc, string stage)
