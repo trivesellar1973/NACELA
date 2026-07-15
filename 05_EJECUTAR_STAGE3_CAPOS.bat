@@ -2,22 +2,15 @@
 setlocal EnableExtensions
 cd /d "%~dp0"
 
-if exist "00_PREPARAR_ALA.bat" call "00_PREPARAR_ALA.bat" /quiet
-call BUILD.bat
-if errorlevel 1 (
-  pause
-  exit /b 1
-)
-
+echo ============================================================
+echo   STAGE 3 DESHABILITADO EN REVISION B2
+echo ============================================================
+echo Primero se debe aprobar:
+echo   - boss circular del spinner
+echo   - transicion oval del morro
+echo   - toma inferior rectangular ovalada solida
+echo   - integracion frontal con la OML
 echo.
-echo Ejecutando B1 completo con Stage 3 de capos y paneles...
-"%~dp0bin\NacelleBuilder.exe" stage3
-set "ERR=%ERRORLEVEL%"
-if not "%ERR%"=="0" (
-  echo Fallo B1 Stage 3. Revise ultimo_ejecucion.log.
-) else (
-  echo B1 Stage 3 creado en generated\B1.
-  echo Abra NACELA_DERECHA_B1_STAGE3_FINAL.SLDPRT.
-)
+echo B2 no genera todavia shell, conductos, escapes, tomas laterales ni capos.
 pause
-exit /b %ERR%
+exit /b 0
